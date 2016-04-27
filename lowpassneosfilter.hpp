@@ -25,6 +25,12 @@
 
 namespace LowPassFilters
 {
+    static const float TWO_PI_SECONDS_PER_MICROSECOND = (2.0f * 3.1415927f * .000001f);
+
+    static const float VAL_FOR_RESET_REMAINDER        = 0.0f;
+
+    static const float TWO_PT_ZERO                    = 2.0f;
+
     class LowPassNeosFilter : public LowPass<float>
     {
     public:
@@ -101,7 +107,7 @@ namespace LowPassFilters
         ///
         /// @return  true when the filter was configured, false otherwise
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        bool ConfigureFilter(uint32_t uiCornerFreq, unsigned uiSamplingPeriod); 
+        bool ConfigureFilter(uint32_t uiCornerFreq, uint32_t uiSamplingPeriod); 
 
     protected:
 

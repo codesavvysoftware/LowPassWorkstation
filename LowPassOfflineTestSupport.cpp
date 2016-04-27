@@ -83,7 +83,7 @@ namespace LowPassOfflineTesting
 
 	void InitFilterData(FILTER_TEST_RESULTS & filterResults, double const * &dInputVals, double dInitialVal, uint32_t Cutoff, uint32_t Period)
 	{
-		for (uint32_t ui = 0; ui < (sizeof(filterResults.ftv) / sizeof(double)); ui++)
+		for (uint32_t ui = 0; ui < (sizeof(filterResults.ftv) / sizeof(FILTER_TEST_VAL)); ui++)
 		{
 			filterResults.ftv[ui].dInput = dInputVals[ui];
 
@@ -114,7 +114,7 @@ namespace LowPassOfflineTesting
 
         double dCurrentOutput = 0.0;
 
-        uint32_t uiNumberOfInputs = sizeof(filterResults.ftv) /  (2 * sizeof(double));
+        uint32_t uiNumberOfInputs = sizeof(filterResults.ftv) /  (sizeof(FILTER_TEST_VAL));
 
         for (uint32_t ui = 0; ui < uiNumberOfInputs; ui++)
         {
@@ -125,7 +125,91 @@ namespace LowPassOfflineTesting
         
     }
 
-    void RunOUVFilter(FILTER_TEST_RESULTS & filterResults)
+	void RunAdcFilter(FILTER_TEST_RESULTS & filterResults)
+	{
+		static const double PI = 3.1415927;
+
+		double Cutoff = filterResults.uiCutoff;
+
+		double Period = filterResults.uiPeriod;
+
+		double Radians = 2.0 * PI * Cutoff * Period * 0.000001;
+
+		double calcLagCoeff = Radians / (Radians + 2.0);
+
+		int32_t ScaledLagCoeff = 0;
+
+		GetScaledVal(calcLagCoeff, ScaledLagCoeff);
+
+		ADCFilter ADCTest(filterResults.uiCutoff,
+			filterResults.uiPeriod,
+			ScaledLagCoeff,
+			16);
+
+		ADCTest.EnableFiltering();
+
+		int32_t CurrentAtoDReading = 0;
+
+		GetScaledVal(filterResults.dInitialVal, CurrentAtoDReading);
+
+		int32_t iOutput;
+
+		ADCTest.ConfigureFilter(100, 50);
+
+		uint32_t uiNumberOfInputs = sizeof(filterResults.ftv) / sizeof(FILTER_TEST_VAL);
+
+		for (uint32_t ui = 0; ui < uiNumberOfInputs; ui++)
+		{
+			GetScaledVal(filterResults.ftv[ui].dInput, CurrentAtoDReading);
+
+			ADCTest.ApplyFilter((CurrentAtoDReading >> 15), filterResults.uiCutoff, iOutput);
+
+			filterResults.ftv[ui].dOutput = ConvertScaledNumToReal(iOutput);
+		}
+
+	}
+
+	void RunNeosFilter(FILTER_TEST_RESULTS & filterResults)
+	{
+		static const double PI = 3.1415927;
+
+		double Cutoff = filterResults.uiCutoff;
+
+		double Period = filterResults.uiPeriod;
+
+		double Radians = 2.0 * PI * Cutoff * Period * 0.000001;
+
+		double calcLagCoeff = Radians / (Radians + 2.0);
+
+		int32_t ScaledLagCoeff = 0;
+
+		GetScaledVal(calcLagCoeff, ScaledLagCoeff);
+
+		LowPassNeosFilter NeosTest(filterResults.uiCutoff,
+			                       filterResults.uiPeriod,
+			                       calcLagCoeff);
+
+		NeosTest.EnableFiltering();
+
+		float CurrentAtoDReading = 0.0f;
+
+		float fOutput;
+
+		NeosTest.ConfigureFilter(100, 50);
+
+		uint32_t uiNumberOfInputs = sizeof(filterResults.ftv) / sizeof(FILTER_TEST_VAL);
+
+		for (uint32_t ui = 0; ui < uiNumberOfInputs; ui++)
+		{
+			CurrentAtoDReading = filterResults.ftv[ui].dInput;
+
+			NeosTest.ApplyFilter(CurrentAtoDReading, filterResults.uiCutoff, fOutput);
+
+			filterResults.ftv[ui].dOutput = fOutput;
+		}
+
+	}
+	void RunOUVFilter(FILTER_TEST_RESULTS & filterResults)
     {
         static const double PI = 3.1415927;
 
@@ -153,7 +237,7 @@ namespace LowPassOfflineTesting
 
         //OUVTest.ApplyFilter((CurrentAtoDReading >> 15), filterResults.uiCutoff, iOutput);
 
-        uint32_t uiNumberOfInputs = sizeof(filterResults.ftv) / (2 * sizeof(double));
+        uint32_t uiNumberOfInputs = sizeof(filterResults.ftv) / sizeof(FILTER_TEST_VAL);
 
         for (uint32_t ui = 0; ui < uiNumberOfInputs; ui++)
         {
@@ -165,4 +249,38 @@ namespace LowPassOfflineTesting
         }     
 
     }
+
+	void CompareFilterOutputs(FILTER_TEST_RESULTS & ftrCompareTo, FILTER_TEST_RESULTS & ftrTargetBeingTested, double tolerancePercentAllowed)
+	{
+		uint32_t uiNumberOfInputs = sizeof(ftrCompareTo.ftv) / sizeof(FILTER_TEST_VAL);
+
+		for (uint32_t ui = 0; ui < uiNumberOfInputs; ui++)
+		{
+			double diffComputedKnown = ftrCompareTo.ftv[ui].dOutput;
+
+			diffComputedKnown -= ftrTargetBeingTested.ftv[ui].dOutput;
+
+			if (diffComputedKnown < 0.0)
+			{
+				diffComputedKnown = -diffComputedKnown;
+			}
+
+			diffComputedKnown /= ftrCompareTo.ftv[ui].dOutput;
+
+			diffComputedKnown *= 100.0;
+
+			ftrTargetBeingTested.ftv[ui].dPercentError = diffComputedKnown;
+
+			if (diffComputedKnown <= tolerancePercentAllowed)
+			{
+				ftrTargetBeingTested.ftv[ui].bInTolerance = true;
+			}
+			else
+			{
+				ftrTargetBeingTested.ftv[ui].bInTolerance = false;
+
+			}
+		}
+
+	}
 };

@@ -142,7 +142,9 @@ namespace LowPassFilters
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     bool LowPassFilterFixedPt::IsFilterOutputValid(int32_t iDiffEqTerm1, int32_t iDiffEqTerm2, int32_t iFilterOuput)
     {
-        return IsThereOverflowFromAddSbtrct(iDiffEqTerm1, iDiffEqTerm2, iFilterOuput);
+        bool bFilterOutputValid = !IsThereOverflowFromAddSbtrct(iDiffEqTerm1, iDiffEqTerm2, iFilterOuput);
+
+        return bFilterOutputValid;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -197,7 +199,7 @@ namespace LowPassFilters
                 return false;
             }
 
-			iCurrentFilterResult = ScaledMultiply(iSecondTermOfDiffEq, iLagCoefficient);
+            iCurrentFilterResult = ScaledMultiply(iSecondTermOfDiffEq, iLagCoefficient);
 
             int32_t iLagValue = iCurrentFilterResult;
 
@@ -241,47 +243,47 @@ namespace LowPassFilters
         return m_IntNumBitsInInt;
     }
 
-	int32_t LowPassFilterFixedPt::ScaledMultiply(int32_t multiplicand, int32_t multiplier, uint32_t scaleFactor)
-	{
-		//
-		// multiplicand integer part * multiplier integer part
-		//
-		//   Shift multiplier integer part right so LSB is at bit 0.  Save in mltplrIntPartShftd.
-		//   Shift multiplicand integer part right so LSB is at bit 0. Save in mltplcndIntPartShftd.
-		//   Mask off integer part of multiplier and save in mlplrFracPart;
-		//   Mask off integer part of multiplicand and save in mltplcndFracPart.
-		//
-		//   result =  ( mltplrIntPartShftd * mltplcndIntPartShftd ) << (scaleFactor -1 );
-		//   result += ( mltplrIntPartShftd * mlplcndFracPart);
-		//   result += ( mltplcndIntPartShftd * mltplrFracPart);
-		//   result += ( ( mlplcndFracPart * mltplrFracPart ) + ( 1 << (scalefactor - 1) ) ) >> (scaleFactor -1 );
-		// 
-		uint32_t  shiftFactor = scaleFactor - 1;
+    int32_t LowPassFilterFixedPt::ScaledMultiply(int32_t multiplicand, int32_t multiplier, uint32_t scaleFactor)
+    {
+        //
+        // multiplicand integer part * multiplier integer part
+        //
+        //   Shift multiplier integer part right so LSB is at bit 0.  Save in mltplrIntPartShftd.
+        //   Shift multiplicand integer part right so LSB is at bit 0. Save in mltplcndIntPartShftd.
+        //   Mask off integer part of multiplier and save in mlplrFracPart;
+        //   Mask off integer part of multiplicand and save in mltplcndFracPart.
+        //
+        //   result =  ( mltplrIntPartShftd * mltplcndIntPartShftd ) << (scaleFactor -1 );
+        //   result += ( mltplrIntPartShftd * mlplcndFracPart);
+        //   result += ( mltplcndIntPartShftd * mltplrFracPart);
+        //   result += ( ( mlplcndFracPart * mltplrFracPart ) + ( 1 << (scalefactor - 1) ) ) >> (scaleFactor -1 );
+        // 
+        uint32_t  shiftFactor = scaleFactor - 1;
 
-		int32_t mltplrIntPartShftd = multiplier >> shiftFactor;
+        int32_t mltplrIntPartShftd = multiplier >> shiftFactor;
 
-		int32_t mltplcndIntPartShftd = multiplicand >> shiftFactor;
+        int32_t mltplcndIntPartShftd = multiplicand >> shiftFactor;
 
-		uint32_t FracMask = 1 << shiftFactor;
+        uint32_t FracMask = 1 << shiftFactor;
 
-		FracMask -= 1;
+        FracMask -= 1;
 
-		uint32_t mltplrFracPart = multiplier & FracMask;
+        uint32_t mltplrFracPart = multiplier & FracMask;
 
-		uint32_t mltplcndFracPart = multiplicand & FracMask;
+        uint32_t mltplcndFracPart = multiplicand & FracMask;
 
-		uint32_t roundoff = 1 << shiftFactor;
+        uint32_t roundoff = 1 << shiftFactor;
 
-		int32_t result = ((!mltplcndFracPart || !mltplrFracPart) ? 0 : (((mltplcndFracPart * mltplrFracPart) + roundoff) >> shiftFactor));
-			
-		result += ((!mltplrIntPartShftd || !mltplcndIntPartShftd) ? 0 : (mltplrIntPartShftd * mltplcndIntPartShftd) << shiftFactor);
+        int32_t result = ((!mltplcndFracPart || !mltplrFracPart) ? 0 : (((mltplcndFracPart * mltplrFracPart) + roundoff) >> shiftFactor));
+            
+        result += ((!mltplrIntPartShftd || !mltplcndIntPartShftd) ? 0 : (mltplrIntPartShftd * mltplcndIntPartShftd) << shiftFactor);
 
-		result += ((!mltplrIntPartShftd || !mltplcndFracPart) ? 0 : mltplcndIntPartShftd * mltplcndFracPart);
+        result += ((!mltplrIntPartShftd || !mltplcndFracPart) ? 0 : mltplcndIntPartShftd * mltplcndFracPart);
 
-		result += ((!mltplcndIntPartShftd || !mltplrFracPart) ? 0 : mltplcndIntPartShftd * mltplrFracPart);
+        result += ((!mltplcndIntPartShftd || !mltplrFracPart) ? 0 : mltplcndIntPartShftd * mltplrFracPart);
 
-		return result;
+        return result;
 
-	}
+    }
 };
 

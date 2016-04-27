@@ -1,6 +1,8 @@
 #ifndef LOWPASS_OFFLINE_TESTING
 #define LOWPASS_OFFLINE_TESTING
 #include "OUVFilter.hpp"
+#include "ADCFilter.hpp"
+#include "lowpassneosfilter.hpp"
 
 namespace LowPassOfflineTesting
 {
@@ -27,6 +29,12 @@ namespace LowPassOfflineTesting
 
         double dOutput;
 
+		double dPercentError;
+
+		double dTolerance;
+
+		bool   bInTolerance;
+
     } FILTER_TEST_VAL;
 
     typedef struct
@@ -42,7 +50,11 @@ namespace LowPassOfflineTesting
         
     static FILTER_TEST_RESULTS   knownGoodFilterResults;
 
-    static FILTER_TEST_RESULTS   testingFilterResults;
+    static FILTER_TEST_RESULTS   OuvFilterResults;
+
+	static FILTER_TEST_RESULTS   AdcFilterResults;
+
+	static FILTER_TEST_RESULTS   NeosFilterResults;
 
     static const double SampleInputSteadState[NUMBER_OF_FILTER_TEST_VALS] = { 10.0,10.0,10.0,10.0,10.0,10.0,10.0,10.0,10.0,10.0 };
 
@@ -61,6 +73,12 @@ namespace LowPassOfflineTesting
     void RunFilterForCheckingLowPass(FILTER_TEST_RESULTS & filterResults);
 
     void RunOUVFilter(FILTER_TEST_RESULTS & filterResults);
+
+	void RunAdcFilter(FILTER_TEST_RESULTS & filterResults);
+
+	void RunNeosFilter(FILTER_TEST_RESULTS & filterResults);
+	
+	void CompareFilterOutputs(FILTER_TEST_RESULTS & ftrCompareTo, FILTER_TEST_RESULTS & ftrTargetBeingTested, double tolerancePercentAllowed);
 };
 #endif
 

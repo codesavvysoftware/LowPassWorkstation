@@ -54,13 +54,13 @@ namespace LowPassFilters
             return false;
         }
 
-        m_fPrevFilteredValue = fAtoDValueRead;
-
         bool bLowPassFilteringStarting = HasFilterRestarted(rfFilterOutput);
 
         if (bLowPassFilteringStarting )
         {
-           return true;
+            m_fPrevFilteredValue = fAtoDValueRead;
+
+            return true;
         }
 
         // Solve the lag filter equation besides adding to the previous filtered value and store it.
@@ -71,32 +71,35 @@ namespace LowPassFilters
 
         // Check to make sure the value isn't subnormal and trying to get to 0, if so we want to help it by setting 0
         // Subnormal check include inf/nan/zero, we don't want that so check those out too
-        //if (!__isnormf(fFilteredValue) && fFilteredValue != 0.0f && !isnan(fFilteredValue) && !isinf(fFilteredValue) && fAtoDValueRead == 0.0f)
-        //if (fFilteredValue != 0.0f && !isnan(fFilteredValue) && !isinf(fFilteredValue) && fAtoDValueRead == 0.0f)
-        bool filterOutputIsValid = IsFilterOutputValid( m_fPrevFilteredValue, fDiff, fFilteredValue );
+        bool filterOutputNotValid = !IsFilterOutputValid( m_fPrevFilteredValue, fDiff, fFilteredValue );
 
-        if (filterOutputIsValid)
+        if (filterOutputNotValid)
         {
-            if (fAtoDValueRead == 0.0f)
-            {
-                fFilteredValue = 0.0f;
-            }
+            RestartFiltering();
 
-            //Check to make sure the diff was useful if not store it in the remainder until it becomes useful
-            if (fFilteredValue == m_fPrevFilteredValue && fAtoDValueRead != fFilteredValue)
-            {
-                m_fRemainder += fDiff;
-            }
-            else
-            {
-                m_fRemainder = 0.0f;
-            }
+            return false;
+        }
+        
+        if (fAtoDValueRead == 0.0f)
+        {
+            fFilteredValue = 0.0f;
+        }
+
+        //Check to make sure the diff was useful if not store it in the remainder until it becomes useful
+        if (
+                 (fFilteredValue == m_fPrevFilteredValue) 
+              && (fAtoDValueRead != fFilteredValue)
+           )
+        {
+            m_fRemainder += fDiff;
         }
         else
         {
-            RestartFiltering();
+            m_fRemainder = 0.0f;
         }
 
+        rfFilterOutput = fFilteredValue;
+        
         m_fPrevFilteredValue = fFilteredValue;
 
         return true;
@@ -108,14 +111,8 @@ namespace LowPassFilters
     /// Configure filter difference equation coefficients
     ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool LowPassNeosFilter::ConfigureFilter(uint32_t uiCornerFreq, unsigned uiSamplingPeriod)
+    bool LowPassNeosFilter::ConfigureFilter(uint32_t uiCornerFreq, uint32_t uiSamplingPeriod)
     {
-        static const float PI = 3.1415927f;
-
-        static const float TWO_PT_ZERO = 2.0f;
-
-        static const float TWO_PI_SECONDS_PER_MICROSECOND = (2.0f * PI * .000001f);
-
         SetCornerFreq(uiCornerFreq);
 
         SetSamplingPeriod(uiSamplingPeriod);
@@ -145,8 +142,6 @@ namespace LowPassFilters
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     void LowPassNeosFilter::InitFilterDataForRestart(float InitialFilterOutput)
     {            
-        static const float VAL_FOR_RESET_REMAINDER = 0.0f;
-
         m_fRemainder = VAL_FOR_RESET_REMAINDER;
     }
 

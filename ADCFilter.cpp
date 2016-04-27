@@ -70,7 +70,9 @@ namespace LowPassFilters
              && (i < m_NumberOfPoles);
              i++)
         {
-            //  y = adcData->y_last_0 + (x - adcData->y_last_0)/256;
+            //  y(n) = y(n-1) + ((AtoDRead << (AtoDResolution - 1)) - y(n-1)) >>  m_FrequencyShiftFactor
+            //
+            // ((AtoDRead << (AtoDResolution - 1)) - y(n-1)
             int32_t iLagTerm = iCurrentFilterOutput - m_pole[i];
 
             bool bInvalidFilterOutput = !IsFilterOutputValid(iLagTerm, iCurrentFilterOutput, m_pole[i]);
@@ -84,15 +86,17 @@ namespace LowPassFilters
                 break;
             }
                     
+            // ((AtoDRead << (AtoDResolution - 1)) - y(n-1)) >>  m_FrequencyShiftFactor
             if (m_FrequencyShiftFactor < 0)
             {
-                iLagTerm <<= m_FrequencyShiftFactor;
+                iLagTerm <<= (-m_FrequencyShiftFactor);
             }
             else
             {
                 iLagTerm >>= m_FrequencyShiftFactor;
             }
 
+            //  y(n) = y(n-1) + ((AtoDRead << (AtoDResolution - 1)) - y(n-1)) >>  m_FrequencyShiftFactor
             iCurrentFilterOutput = m_pole[i] + iLagTerm;
 
             bInvalidFilterOutput = IsThereOverflowFromAddSbtrct(m_pole[i], iLagTerm, iCurrentFilterOutput);
@@ -106,6 +110,7 @@ namespace LowPassFilters
                 break;
             }
 
+            // For multiple poles
             m_pole[i] = iCurrentFilterOutput;
         }
 
@@ -122,13 +127,17 @@ namespace LowPassFilters
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     bool ADCFilter::ConfigureFilter(uint32_t uiCornerFreq, unsigned uiSamplingPeriod)
     {
-        bool bFilterConfigured = true;
+        bool    bFilterConfigured = true;
 
-        int32_t iSmallestShiftFactor = GetNumberOfBitsInInt();
+        int32_t iNumberOfIntBits = GetNumberOfBitsInInt();
+
+        int32_t iBitsToRightOfIntMSBForNoShift = GetNumberOfBitsInInt();
             
-        iSmallestShiftFactor -= NO_SHIFT_BIT_POS;
+        iBitsToRightOfIntMSBForNoShift = iNumberOfIntBits - NO_SHIFT_BIT_POS;
 
-        iSmallestShiftFactor -= GetNumberOfADCResolutionBits();
+        int32_t iBitsToRightOfIntMSBForAtoDRsltn = iNumberOfIntBits - GetNumberOfADCResolutionBits();
+
+        int iSmallestShiftFactor = iBitsToRightOfIntMSBForAtoDRsltn - iBitsToRightOfIntMSBForNoShift;
 
         switch (uiCornerFreq)
         {
