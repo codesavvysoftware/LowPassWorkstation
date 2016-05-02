@@ -34,11 +34,11 @@ namespace LowPassFilters
     /// Apply the low pass filter difference equation to unfiltered ADC input data
     ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool ADCFilter::ApplyFilter(int32_t iAtoDValueRead, uint32_t uiCornerFreqToFilter,  int32_t & rFilterOutput)
+    bool ADCFilter::ApplyFilter(int32_t slAtoDValueRead, uint32_t ulCornerFreqToFilter,  int32_t & rslFilterOutput)
     {
-        int32_t iScaledAtoD = iAtoDValueRead << 15;
+        int32_t slScaledAtoD = slAtoDValueRead << 15;
 
-        rFilterOutput = iScaledAtoD;
+        rslFilterOutput = slScaledAtoD;
             
         bool bFilteringIsNotEnabled = !IsFilteringEnabled();
 
@@ -47,39 +47,39 @@ namespace LowPassFilters
             return false;
         }
 
-        bool bReconfigureFailure = !ReconfigureWithNewCornerFrequencey(uiCornerFreqToFilter);
+        bool bReconfigureFailure = !ReconfigureWithNewCornerFrequencey(ulCornerFreqToFilter);
 
         if (bReconfigureFailure)
         {
             return false;
         }
 
-        bool bLowPassFilteringStarting = HasFilterRestarted(rFilterOutput);
+        bool bLowPassFilteringStarting = HasFilterRestarted(rslFilterOutput);
 
         if (bLowPassFilteringStarting )
         {
            return true;
         }
 
-        int32_t iCurrentFilterOutput = iScaledAtoD;
+        int32_t slCurrentFilterOutput = slScaledAtoD;
 
         bool bFilterApplied = true;
 
-        for (int32_t i = 0;
-                (i < sizeof(m_pole) / sizeof(uint32_t))
-             && (i < m_NumberOfPoles);
-             i++)
+        for (int32_t sl = 0;
+                (sl < sizeof(m_slPole) / sizeof(uint32_t))
+             && (sl < m_ulNumberOfPoles);
+             sl++)
         {
             //  y(n) = y(n-1) + ((AtoDRead << (AtoDResolution - 1)) - y(n-1)) >>  m_FrequencyShiftFactor
             //
             // ((AtoDRead << (AtoDResolution - 1)) - y(n-1)
-            int32_t iLagTerm = iCurrentFilterOutput - m_pole[i];
+            int32_t slLagTerm = iCurrentFilterOutput - m_slPole[sl];
 
-            bool bInvalidFilterOutput = !IsFilterOutputValid(iLagTerm, iCurrentFilterOutput, m_pole[i]);
+            bool bInvalidFilterOutput = !IsFilterOutputValid(iLagTerm, iCurrentFilterOutput, m_slPole[sl]);
 
             if (bInvalidFilterOutput)
             {
-                iCurrentFilterOutput = iScaledAtoD;
+                slCurrentFilterOutput = slScaledAtoD;
 
                 bFilterApplied = false;
 
@@ -87,23 +87,23 @@ namespace LowPassFilters
             }
                     
             // ((AtoDRead << (AtoDResolution - 1)) - y(n-1)) >>  m_FrequencyShiftFactor
-            if (m_FrequencyShiftFactor < 0)
+            if (m_ulFrequencyShiftFactor < 0)
             {
-                iLagTerm <<= (-m_FrequencyShiftFactor);
+                slLagTerm <<= (-m_ulFrequencyShiftFactor);
             }
             else
             {
-                iLagTerm >>= m_FrequencyShiftFactor;
+                slLagTerm >>= m_FrequencyShiftFactor;
             }
 
             //  y(n) = y(n-1) + ((AtoDRead << (AtoDResolution - 1)) - y(n-1)) >>  m_FrequencyShiftFactor
-            iCurrentFilterOutput = m_pole[i] + iLagTerm;
+            slCurrentFilterOutput = m_slPole[i] + slLagTerm;
 
-            bInvalidFilterOutput = IsThereOverflowFromAddSbtrct(m_pole[i], iLagTerm, iCurrentFilterOutput);
+            bInvalidFilterOutput = IsThereOverflowFromAddSbtrct(m_slPole[i], slLagTerm, slCurrentFilterOutput);
 
             if (bInvalidFilterOutput)
             {
-                iCurrentFilterOutput = iScaledAtoD;
+                slCurrentFilterOutput = slScaledAtoD;
 
                 bFilterApplied = false;
 
@@ -111,10 +111,10 @@ namespace LowPassFilters
             }
 
             // For multiple poles
-            m_pole[i] = iCurrentFilterOutput;
+            m_slPole[i] = slCurrentFilterOutput;
         }
 
-        rFilterOutput = iCurrentFilterOutput;
+        rslFilterOutput = slCurrentFilterOutput;
 
         return bFilterApplied;
     }
@@ -125,55 +125,55 @@ namespace LowPassFilters
     /// Configure filter difference equation coefficients
     ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool ADCFilter::ConfigureFilter(uint32_t uiCornerFreq, unsigned uiSamplingPeriod)
+    bool ADCFilter::ConfigureFilter(uint32_t ulCornerFreq, uint32_t ulSamplingPeriod)
     {
         bool    bFilterConfigured = true;
 
-        int32_t iNumberOfIntBits = GetNumberOfBitsInInt();
+        int32_t slNumberOfIntBits = GetNumberOfBitsInInt();
 
-        int32_t iBitsToRightOfIntMSBForNoShift = GetNumberOfBitsInInt();
+        int32_t slBitsToRightOfIntMSBForNoShift = GetNumberOfBitsInInt();
             
-        iBitsToRightOfIntMSBForNoShift = iNumberOfIntBits - NO_SHIFT_BIT_POS;
+        slBitsToRightOfIntMSBForNoShift = slNumberOfIntBits - NO_SHIFT_BIT_POS;
 
-        int32_t iBitsToRightOfIntMSBForAtoDRsltn = iNumberOfIntBits - GetNumberOfADCResolutionBits();
+        int32_t slBitsToRightOfIntMSBForAtoDRsltn = slNumberOfIntBits - GetNumberOfADCResolutionBits();
 
-        int iSmallestShiftFactor = iBitsToRightOfIntMSBForAtoDRsltn - iBitsToRightOfIntMSBForNoShift;
+        int slSmallestShiftFactor = slBitsToRightOfIntMSBForAtoDRsltn - slBitsToRightOfIntMSBForNoShift;
 
         switch (uiCornerFreq)
         {
         case FREQ_100_HZ:
                 
-            m_FrequencyShiftFactor = iSmallestShiftFactor;
+            m_slFrequencyShiftFactor = slSmallestShiftFactor;
 
             break;
 
         case FREQ_50_HZ:
         
-            m_FrequencyShiftFactor = iSmallestShiftFactor + 1;
+            m_slFrequencyShiftFactor = slSmallestShiftFactor + 1;
 
             break;
 
         case FREQ_25_HZ:
         
-            m_FrequencyShiftFactor = iSmallestShiftFactor + 2;
+            m_slFrequencyShiftFactor = slSmallestShiftFactor + 2;
 
             break;
 
         case FREQ_10_HZ:
      
-            m_FrequencyShiftFactor = iSmallestShiftFactor + 3;
+            m_slFrequencyShiftFactor = slSmallestShiftFactor + 3;
 
             break;
 
         case FREQ_5_HZ:
         
-            m_FrequencyShiftFactor = iSmallestShiftFactor + 4;
+            m_slFrequencyShiftFactor = slSmallestShiftFactor + 4;
 
             break;
 
         case FREQ_1_HZ:
           
-            m_FrequencyShiftFactor = iSmallestShiftFactor + 6;
+            m_slFrequencyShiftFactor = slSmallestShiftFactor + 6;
 
             break;
 
@@ -186,7 +186,7 @@ namespace LowPassFilters
 
         if (bFilterConfigured)
         {
-            SetCornerFreq(uiCornerFreq);
+            SetCornerFreq(ulCornerFreq);
         }
 
         return bFilterConfigured;

@@ -48,17 +48,20 @@ namespace LowPassFilters
         /// @par Full Description
         /// Base class contructor for the Low Pass Single Order Lag Filters
         ///
-        /// @param  uiCornerFreq       Initial corner frequency 
-        /// @param  uiSamplingPeriod   Sampling period for the filter
+        /// @pre    none
+        /// @post   Base class object created for low filters that inherit it.
+        /// 
+        /// @param  ulCornerFreq       Initial corner frequency 
+        /// @param  ulSamplingPeriod   Sampling period for the filter
         /// @param  LagCoefficient     InitialLagCoefficient
         ///
         /// @return  None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        LowPass(uint32_t       uiCornerFreq,
-                uint32_t       uiSamplingPeriod,
+        LowPass(uint32_t       ulCornerFreq,
+                uint32_t       ulSamplingPeriod,
                 NumericFormat  LagCoefficient)
-            : m_uiCornerFreq(uiCornerFreq),
-              m_uiSamplePeriod(uiSamplingPeriod),
+            : m_ulCornerFreq(uiCornerFreq),
+              m_ulSamplePeriod(uiSamplingPeriod),
               m_LagCoefficient(LagCoefficient),
               m_bFilteringEnabled(false),
               m_bFirstSample(true)
@@ -70,6 +73,9 @@ namespace LowPassFilters
         ///
         /// Destrcutor
         ///
+        /// @pre    Base class object created for low filters that inherit it.
+        /// @post   Base class object destroyed.
+        /// 
         /// @par Full Description
         /// Base class destructor for the Low Pass Single Order Lag Filters
         ///
@@ -87,13 +93,16 @@ namespace LowPassFilters
         /// @par Full Description
         /// Pure virtual method for the applying the low pass filter
         ///
+        /// @pre    none.
+        /// @post   None but all filters that inherit the base class must implement a method with this signature.
+        /// 
         /// @param  adcValueRead     Raw ADC data read by the ADC driver
-        /// @param  uiCornerFreq     Corner Frequency for the filter.
+        /// @param  ulCornerFreq     Corner Frequency for the filter.
         /// @param  rFilterOutput    Output from filter difference equation
         ///
         /// @return  true when the filter was applied, false otherwise
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        virtual bool ApplyFilter(NumericFormat adcValueRead, uint32_t uiCornerFreq, NumericFormat & rFilterOutput) = 0;
+        virtual bool ApplyFilter(NumericFormat adcValueRead, uint32_t ulCornerFreq, NumericFormat & rFilterOutput) = 0;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPass::ConfigureFilter
@@ -103,12 +112,15 @@ namespace LowPassFilters
         /// @par Full Description
         /// Pure virtual method for the configuring the low pass filter
         ///
-        /// @param  uiCornerFreq         Corner Frequency for the filter
-        /// @param  uiSamplingPeriod     Sampling period for the filter in microseconds
+        /// @pre    none.
+        /// @post   None but all filters that inherit the base class must implement a method with this signature.
+        /// 
+        /// @param  ulCornerFreq         Corner Frequency for the filter
+        /// @param  ulSamplingPeriod     Sampling period for the filter in microseconds
         ///
         /// @return  true when the filter was configured, false otherwise
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        virtual bool ConfigureFilter(uint32_t uiCornerFreq, uint32_t uiSamplingPeriod) = 0;
+        virtual bool ConfigureFilter(uint32_t ulCornerFreq, uint32_t ulSamplingPeriod) = 0;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPass::EnableFiltering()
@@ -118,12 +130,12 @@ namespace LowPassFilters
         /// @par Full Description
         /// Enable low pass filtering of raw ADC data.
         ///
+        /// @pre    none.
+        /// @post   Filtering enabled.
+        /// 
         /// @return None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        void EnableFiltering()
-        {
-            m_bFilteringEnabled = true;
-        }
+        inline void EnableFiltering() { m_bFilteringEnabled = true; }
 
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -134,12 +146,12 @@ namespace LowPassFilters
         /// @par Full Description
         /// Disable low pass filtering of raw ADC data.
         ///
+        /// @pre    none.
+        /// @post   Filtering disabled.
+        /// 
         /// @return None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        void DisableFiltering()
-        {
-            m_bFilteringEnabled = false;
-        }
+        inline void DisableFiltering() { m_bFilteringEnabled = false; }
 
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -150,12 +162,12 @@ namespace LowPassFilters
         /// @par Full Description
         /// Query filtering enabled status to determine if filtering is enabled or disabled.
         ///
+        /// @pre    none.
+        /// @post   none.
+        /// 
         /// @return true when filtering is enabled, false when disabled
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        bool IsFilteringEnabled()
-        {
-            return m_bFilteringEnabled;
-        }
+        inline bool IsFilteringEnabled() { return m_bFilteringEnabled; }
 
 
     protected:
@@ -165,6 +177,31 @@ namespace LowPassFilters
         //**************************************************************************************************************
     
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// FUNCTION NAME: LowPassFilterFixedPt::CalcDiffEquation
+        ///
+        /// Calculate filtered output when applying the low pass filter
+        ///
+        /// @par Full Description
+        /// Virtual method for calculating filtered ADC value from the difference equation
+        /// y(n) = y(n-1) + LagCoefficient * ( Raw_ADC_value_read - y(n-1) )
+        /// where 
+        ///   LagCoefficient
+        ///    = (2 * pi * corner_frequenchy * sample_period ) / ( ( 2 * pi  * corner_frequenchy * sample_period ) + 2 )
+        ///
+        /// @pre    object created.
+        /// @post   Difference equation calculated.
+        ///
+        /// @param  AtoDValue           Raw ADC data scaled to a binary point
+        /// @param  LagCoefficient      Coefficient of the lag term.
+        /// @param  FilteredValue       Value of raw ADC data filtered
+        ///
+        /// @return  true when calculation occurred without error, false otherwise
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        bool CalcDiffEquation(NumericFormat   AtoDValue,
+                              NumericFormat   LagCoefficient,
+                              NumericFormat   FilteredValue) = 0;
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPass::InitFilterDataForRestart
         ///
         /// Initialize filter data to put the filter in it's initial state
@@ -172,6 +209,9 @@ namespace LowPassFilters
         /// @par Full Description
         /// Pure virtual method for initializing filter data.
         ///
+        /// @pre    none.
+        /// @post   None but all filters that inherit the base class must implement a method with this signature.
+        /// 
         /// @return  None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         virtual void InitFilterDataForRestart(NumericFormat InitialFilterOutput) = 0;
@@ -184,6 +224,9 @@ namespace LowPassFilters
         /// @par Full Description
         /// Pure virtual method for determining the validity of the low filter output generated by difference equation
         ///
+        /// @pre    none.
+        /// @post   None but all filters that inherit the base class must implement a method with this signature.
+        /// 
         /// @param  Term1           First term of binary aritmetic operation of filter being checked
         /// @param  Term2           Second term of binary aritmetic operation of filter being checked.
         /// @param  Result          Result of binary arithmetic operation of filter being checked
@@ -201,11 +244,14 @@ namespace LowPassFilters
         /// Determining if the filter has started/restarted. When starting restarting put filter in not restarting state
         /// and initialize the filter data to the starting state.
         ///
+        /// @pre    Filter object instantiated.
+        /// @post   Filter data for the filter object initialized.
+        /// 
         /// @param  rInitialFilterOutput    For return fromm appying filter difference equation and initializing data
         ///
         /// @return  true when the filter is restarting, false otherwise
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        bool HasFilterRestarted(NumericFormat & rInitialFilterOutput)
+        bool HasFilterRestarted(NumericFormat rInitialFilterOutput)
         {
             bool bFilterRestarted = false;
 
@@ -229,21 +275,24 @@ namespace LowPassFilters
         /// @par Full Description
         /// Reconfigure low pass filter synchronously, when applying filter.
         ///
-        /// @param  uiCornerFreqForFilter     Corner frequency to reconfigure filter with
+        /// @pre    Filter instantiated.
+        /// @post   The filter is reconfigured with a new lag coefficient with valid sample period and corner frequency
+        /// 
+        /// @param  ulCornerFreqForFilter     Corner frequency to reconfigure filter with
         ///
         /// @return  true when filter reconfigured successfully, false otherwise
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        bool ReconfigureWithNewCornerFrequencey(uint32_t uiCornerFreqToFilter)
+        bool ReconfigureWithNewCornerFrequencey(uint32_t ulCornerFreqToFilter)
         {
-            uint32_t uiCornerFreq = GetCornerFreq();
+            uint32_t ulCornerFreq = GetCornerFreq();
 
             bool bConfigureSuccess = true;
 
-            if (uiCornerFreqToFilter != uiCornerFreq)
+            if (ulCornerFreqToFilter != uiCornerFreq)
             {
-                uint32_t uiSamplePeriod = GetSamplePeriod();
+                uint32_t ulSamplePeriod = GetSamplePeriod();
 
-                bConfigureSuccess = ConfigureFilter(uiCornerFreqToFilter, uiSamplePeriod);
+                bConfigureSuccess = ConfigureFilter(ulCornerFreqToFilter, ulSamplePeriod);
             }
 
             return bConfigureSuccess;
@@ -257,12 +306,12 @@ namespace LowPassFilters
         /// @par Full Description
         /// Get corner frequency the filter is configured for.
         ///
+        /// @pre    none.
+        /// @post   none.
+        /// 
         /// @return  The corner frequency the filter is configured for
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        uint32_t GetCornerFreq()
-        {
-            return m_uiCornerFreq;
-        }
+        inline uint32_t GetCornerFreq() { return m_ulCornerFreq; }
 
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -273,12 +322,12 @@ namespace LowPassFilters
         /// @par Full Description
         /// Get sample period the filter is configured for.
         ///
+        /// @pre    none.
+        /// @post   none.
+        /// 
         /// @return  The sample period the filter is configured for
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        uint32_t GetSamplePeriod()
-        {
-            return m_uiSamplePeriod;
-        }
+        inline uint32_t GetSamplePeriod() { return m_ulSamplePeriod; }
 
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -289,12 +338,12 @@ namespace LowPassFilters
         /// @par Full Description
         /// Get lag coefficient the filter is configured for.
         ///
+        /// @pre    none.
+        /// @post   none.
+        /// 
         /// @return  The lag coefficient the filter is configured for
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        NumericFormat GetLagCoefficient()
-        {
-            return m_LagCoefficient;
-        }
+        inline NumericFormat GetLagCoefficient() { return m_LagCoefficient; }
 
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -305,12 +354,12 @@ namespace LowPassFilters
         /// @par Full Description
         /// Restart digitial filtering from first sample
         ///
+        /// @pre    none.
+        /// @post   m_bFirstSample is set indicating to ApplyFilter that filtering has restarted.
+        /// 
         /// @return  None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        void RestartFiltering()
-        {
-            m_bFirstSample = false;
-        }
+        inline void RestartFiltering() { m_bFirstSample = false; }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPass::SetCornerFreq
@@ -320,16 +369,16 @@ namespace LowPassFilters
         /// @par Full Description
         /// Set new corner frequency to input corner frequency.
         ///
-        /// @param  uiCornerFreq     Corner frequency for the filter
+        /// @pre    none.
+        /// @post   New corner frequency saved.
+        /// 
+        /// @param  ulCornerFreq     Corner frequency for the filter
         ///
         /// @return  None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        void SetCornerFreq(uint32_t uiCornerFreq)
-        {
-            m_uiCornerFreq = uiCornerFreq;
-        }
+        inline void SetCornerFreq(uint32_t ulCornerFreq) { m_ulCornerFreq = uiCornerFreq; }
 
-         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPass::SetLagCoefficient
         ///
         /// Set lag coefficient
@@ -337,14 +386,14 @@ namespace LowPassFilters
         /// @par Full Description
         /// Set new lag coefficient to input lag coefficient.
         ///
+        /// @pre    none.
+        /// @post   New lag coefficient saved.
+        /// 
         /// @param  LagCoefficient     Lag coefficient for the filter
         ///
         /// @return  The lag coefficient the filter is configured for
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        void SetLagCoefficient(NumericFormat LagCoefficient)
-        {
-            m_LagCoefficient = LagCoefficient;
-        }
+        inline void SetLagCoefficient(NumericFormat LagCoefficient) { m_LagCoefficient = LagCoefficient; }
 
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -355,14 +404,14 @@ namespace LowPassFilters
         /// @par Full Description
         /// Set new sampling period to input sampling period.
         ///
+        /// @pre    none.
+        /// @post   New sampling period saved.
+        /// 
         /// @param  uiSamplingPeriod     Sampling period for the filter
         ///
         /// @return  None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        void SetSamplingPeriod(uint32_t uiSamplingPeriod)
-        {
-            m_uiSamplePeriod = uiSamplingPeriod;
-        }
+        inline void SetSamplingPeriod(uint32_t uiSamplingPeriod) { m_uiSamplePeriod = uiSamplingPeriod; }
 
     private:
         //**************************************************************************************************************
@@ -373,10 +422,10 @@ namespace LowPassFilters
         bool           m_bFilteringEnabled;
 
         // corner frequency for the filter
-        uint32_t       m_uiCornerFreq;
+        uint32_t       m_ulCornerFreq;
 
         // sampling period for the filter
-        uint32_t       m_uiSamplePeriod;
+        uint32_t       m_ulSamplePeriod;
 
         // lag coefficient for the filter
         NumericFormat  m_LagCoefficient;

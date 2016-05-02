@@ -35,34 +35,38 @@ namespace LowPassFilters
     ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     bool LowPassNeosFilter::ApplyFilter(float        fAtoDValueRead,
-                                        uint32_t     uiCornerFreqToFilter, 
-                                        float &      rfFilterOutput)
+        uint32_t     uiCornerFreqToFilter,
+        float &      rfFilterOutput)
     {
         rfFilterOutput = fAtoDValueRead;
 
-        bool bFilteringIsNotEnabled = !IsFilteringEnabled();
+        bool bSuccess = true
 
-        if (bFilteringIsNotEnabled )
+        if ((!IsFilteringEnabled() || !ReconfigureWithNewCornerFrequencey(ulCornerFreqToFilter))
         {
-            return false;
+            bSuccess = false;
         }
-
-        bool bReconfigureFailure = !ReconfigureWithNewCornerFrequencey(uiCornerFreqToFilter);
-
-        if (bReconfigureFailure)
-        {
-            return false;
-        }
-
-        bool bLowPassFilteringStarting = HasFilterRestarted(rfFilterOutput);
-
-        if (bLowPassFilteringStarting )
+        else if (HasFilterRestarted(rslFilterOutput))
         {
             m_fPrevFilteredValue = fAtoDValueRead;
-
-            return true;
+        }
+        else
+        {
+            bSuccess = CalcDiffEquation(fAtoDValueRead, GetLagCoefficient(), rfFilterOutput);
         }
 
+        return bSuccess;
+    }
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /// FUNCTION NAME: LowPassFilterFixedPt::CalcDiffEquation
+    ///
+    /// Calculate filtered output when applying the low pass filter
+    ///
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    bool LowPassNeosFilter::CalcDiffEquation(float        fAtoDValueRead,
+                                             float        fLagCoefficient,
+                                             float &      rfFilteredOutput )
+    {
         // Solve the lag filter equation besides adding to the previous filtered value and store it.
         float fDiff = (fAtoDValueRead - m_fPrevFilteredValue) * GetLagCoefficient();
 
@@ -71,9 +75,9 @@ namespace LowPassFilters
 
         // Check to make sure the value isn't subnormal and trying to get to 0, if so we want to help it by setting 0
         // Subnormal check include inf/nan/zero, we don't want that so check those out too
-        bool filterOutputNotValid = !IsFilterOutputValid( m_fPrevFilteredValue, fDiff, fFilteredValue );
+        bool bFilterOutpuNotValid = !IsFilterOutputValid( m_fPrevFilteredValue, fDiff, fFilteredValue );
 
-        if (filterOutputNotValid)
+        if (bFilterOutputNotValid)
         {
             RestartFiltering();
 
@@ -87,7 +91,7 @@ namespace LowPassFilters
 
         //Check to make sure the diff was useful if not store it in the remainder until it becomes useful
         if (
-                 (fFilteredValue == m_fPrevFilteredValue) 
+                 (fFilteredValue == m_fPrevFilteredValue)
               && (fAtoDValueRead != fFilteredValue)
            )
         {
@@ -99,7 +103,7 @@ namespace LowPassFilters
         }
 
         rfFilterOutput = fFilteredValue;
-        
+
         m_fPrevFilteredValue = fFilteredValue;
 
         return true;

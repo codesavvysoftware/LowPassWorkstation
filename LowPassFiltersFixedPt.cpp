@@ -37,48 +37,26 @@ namespace LowPassFilters
     /// Apply the low pass filter difference equation to unfiltered ADC input data
     ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool LowPassFilterFixedPt::ApplyFilter(int32_t iAtoDValueRead, uint32_t uiCornerFreqToFilter, int32_t & rFilterOutput)
+    bool LowPassFilterFixedPt::ApplyFilter(int32_t slAtoDValueRead, uint32_t ulCornerFreqToFilter, int32_t & rslFilterOutput)
     {
-        int32_t iScaledAtoD = iAtoDValueRead << m_ScaledIntegerLSBBitPos;
+        bool bSuccess = true;
+        
+        int32_t slScaledAtoD = slAtoDValueRead << m_ulScaledIntegerLSBBitPos;
+        
+        rslFilterOutput = slScaledAtoD;
 
-        rFilterOutput = iScaledAtoD;
-
-        bool bFilteringIsNotEnabled = !IsFilteringEnabled();//  IsFilteringEnabled();
-
-        if (bFilteringIsNotEnabled)
+        if ((!IsFilteringEnabled() || !ReconfigureWithNewCornerFrequencey(ulCornerFreqToFilter))
         {
-           return false;
+            bSuccess = false;
         }
-
-   
-        bool bReconfigureFailure = !ReconfigureWithNewCornerFrequencey(uiCornerFreqToFilter);
-                
-        if (bReconfigureFailure)
-        {
-            return false;
-        }
-
-        bool bLowPassFilteringStarting = HasFilterRestarted(rFilterOutput);
-
-        if (bLowPassFilteringStarting )
-        {
-           return true;
-        }
-
-        int32_t iLagCoefficient = GetLagCoefficient();
-
-        bool bErrorsCalcOfDiffEquation = !CalcDiffEquation(iScaledAtoD, iLagCoefficient, rFilterOutput);
-
-        if (bErrorsCalcOfDiffEquation)
+        else if (!HasFilterRestarted(rslFilterOutput) && !CalcDiffEquation(slScaledAtoD, GetLagCoefficient(), rslFilterOutput))
         {
             RestartFiltering();
 
-            rFilterOutput = iScaledAtoD;
-
-            return false;
+            bSuccess = false;
         }
-
-        return true;
+        
+        return bSuccess;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -87,28 +65,26 @@ namespace LowPassFilters
     /// Configure filter difference equation coefficients
     ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool LowPassFilterFixedPt::ConfigureFilter(uint32_t uiCornerFreq, uint32_t uiSamplePeriod)
+    bool LowPassFilterFixedPt::ConfigureFilter(uint32_t ulCornerFreq, uint32_t ulSamplePeriod)
     {
-        SetCornerFreq(uiCornerFreq);
+        SetCornerFreq(ulCornerFreq);
 
-        SetSamplingPeriod(uiSamplePeriod);
+        SetSamplingPeriod(ulSamplePeriod);
 
         // pi * corner_freq_hz * sample_period
-        uint64_t llAccum = PI_OMEGA * uiCornerFreq * uiSamplePeriod;
+        uint64_t ullAccum = PI_OMEGA * ulCornerFreq * ulSamplePeriod;
 
 
         // (1-pi * corner_freq_hz * sample_period)
-        uint64_t llSecondTermInApprox = (0x100000000 - llAccum);
+        uint64_t ullSecondTermInApprox = (ONE_PT_ZERO_SCALED_BINARY_PT - ullAccum);
 
-        llAccum *= llSecondTermInApprox;
+        ullAccum *= ullSecondTermInApprox;
 
-        llAccum += ROUND_OFF_FRAC_64;
+        ullAccum += ROUND_OFF_FRAC_64;
 
-        llAccum >>= (m_IntNumBitsInInt + (m_IntNumBitsInInt - m_NumberOfFrcntlBits));
+        ullAccum >>= (m_ulIntNumBitsInInt + (m_ulIntNumBitsInInt - m_ulNumberOfFrcntlBits));
 
-        uint32_t uiLagCoefficient = llAccum;
-
-        SetLagCoefficient(uiLagCoefficient);
+        SetLagCoefficient(static_cast<uint32_t>(ullAccum));
 
         return true;
     }
@@ -123,16 +99,16 @@ namespace LowPassFilters
     /// Initialize filter data to put the filter in it's initial state
     ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    void LowPassFilterFixedPt::InitFilterDataForRestart(int32_t InitialFilterOutput)
+    void LowPassFilterFixedPt::InitFilterDataForRestart(int32_t slInitialFilterOutput)
     {            
-        for (int32_t i = 0; 
-                ( i < sizeof(m_pole) / sizeof(uint32_t))
-             && ( i < m_NumberOfPoles );
-             i++)
+        for (uint32_t ul = 0; 
+                ( ul < sizeof(m_slPole) / sizeof(uint32_t))
+             && ( ul < m_ulNumberOfPoles );
+             ul++)
         {
-            m_pole[i] = InitialFilterOutput;
+            m_slPole[ul] = slInitialFilterOutput;
         }
-    }
+    }                                                                         u
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     /// FUNCTION NAME: LowPassFilterFixedPt::IsFilterResultValid
@@ -140,9 +116,9 @@ namespace LowPassFilters
     /// Determine validity of low pass filter output
     ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool LowPassFilterFixedPt::IsFilterOutputValid(int32_t iDiffEqTerm1, int32_t iDiffEqTerm2, int32_t iFilterOuput)
+    bool LowPassFilterFixedPt::IsFilterOutputValid(int32_t slDiffEqTerm1, int32_t slDiffEqTerm2, int32_t slFilterOuput)
     {
-        bool bFilterOutputValid = !IsThereOverflowFromAddSbtrct(iDiffEqTerm1, iDiffEqTerm2, iFilterOuput);
+        bool bFilterOutputValid = !IsThereOverflowFromAddSbtrct(slDiffEqTerm1, slDiffEqTerm2, slFilterOuput);
 
         return bFilterOutputValid;
     }
@@ -153,15 +129,24 @@ namespace LowPassFilters
     /// Determine validity of low pass filter output
     ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool LowPassFilterFixedPt::IsThereOverflowFromAddSbtrct(uint32_t uiTerm1, uint32_t uiTerm2, uint32_t uiResult)
+    bool LowPassFilterFixedPt::IsThereOverflowFromAddSbtrct(uint32_t ulTerm1, uint32_t ulTerm2, uint32_t ulResult)
     {
         bool bOverflowOccurred = false;
 
-        uint32_t uiTerm1MSB = uiTerm1 & m_IntMSBSet;
+        // In pieces the following is implemented
+        //
+        // if (!((ulTerm1 & m_ulIntMSBSet) ^ (ulTerm2 & m_ulIntMSBSet) && ((ulTerm1 & m_ulIntMSBSet) ^ (ulResult & m_ulIntMSBSet))
+        //
+        // IF ( (the most significant bit of Terms one and 2 are the same) AND ( the most significant bits of term 1 and the result are different) )
+        // then overflow occurred.
+        //
+        // m_ulIntMSBSet indicates a ul with the most significant bit set only.
+        //
+        uint32_t ulTerm1MSB = ulTerm1 & m_ulIntMSBSet;
 
-        uint32_t uiTerm2MSB = uiTerm2 & m_IntMSBSet;
+        uint32_t ulTerm2MSB = uiTerm2 & m_ulIntMSBSet;
 
-        uint32_t uiResultMSB = uiResult & m_IntMSBSet;
+        uint32_t ulResultMSB = ulResult & m_ulIntMSBSet;
 
         if (!(uiTerm1MSB ^ uiTerm2MSB) && (uiTerm1MSB ^ uiResultMSB))
         {
@@ -177,73 +162,51 @@ namespace LowPassFilters
     /// Calculate filtered output when applying the low pass filter
     ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool LowPassFilterFixedPt::CalcDiffEquation(int32_t   iScaledAtoD,
-                                                int32_t   iLagCoefficient,
-                                                int32_t & rFilteredValue)
+    bool LowPassFilterFixedPt::CalcDiffEquation(int32_t   slScaledAtoD,
+                                                int32_t   slLagCoefficient,
+                                                int32_t & rslFilteredValue)
     {
-        int32_t i = 0;
+        uint32_t ul = 0;
 
-        int32_t iCurrentFilterResult = iScaledAtoD;
+        int32_t slCurrentFilterResult = slScaledAtoD;
 
-        for (i = 0; 
-                ( i <( sizeof(m_pole) / sizeof(int) ))
-             && ( i < m_NumberOfPoles );
-             i++)
+        for (ul = 0; 
+                ( ul <( sizeof(m_slPole) / sizeof(int32_t) ))
+             && ( ul < m_ulNumberOfPoles );
+             ul++)
         {
-            int32_t iSecondTermOfDiffEq = iCurrentFilterResult - m_pole[i];
+            int32_t slSecondTermOfDiffEq = slCurrentFilterResult - m_slPole[ul];
 
-            bool bSubtractionOverflowed = IsThereOverflowFromAddSbtrct(iCurrentFilterResult, m_pole[i], iSecondTermOfDiffEq);
+            bool bSubtractionOverflowed = IsThereOverflowFromAddSbtrct(iCurrentFilterResult, m_slPole[ul], slSecondTermOfDiffEq);
 
             if (bSubtractionOverflowed)
             {
                 return false;
             }
 
-            iCurrentFilterResult = ScaledMultiply(iSecondTermOfDiffEq, iLagCoefficient);
+           sliCurrentFilterResult = ScaledMultiply(slSecondTermOfDiffEq, slLagCoefficient);
 
-            int32_t iLagValue = iCurrentFilterResult;
+            int32_t slLagValue = slCurrentFilterResult;
 
-            iCurrentFilterResult += m_pole[i];
+            slCurrentFilterResult += m_slPole[i];
 
-            bool bAdditionOverflowed = IsThereOverflowFromAddSbtrct(iLagValue, m_pole[i], iCurrentFilterResult);
+            bool bAdditionOverflowed = IsThereOverflowFromAddSbtrct(slLagValue, m_slPole[i], slCurrentFilterResult);
 
             if (bAdditionOverflowed)
             {
                 return false;
             }
 
-            m_pole[i] = iCurrentFilterResult;
+            m_slPole[i] = slCurrentFilterResult;
 
         }
 
-        rFilteredValue = iCurrentFilterResult;
+        rslFilteredValue = slCurrentFilterResult;
 
         return true;
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /// FUNCTION NAME: LowPassFilterFixedPt::GetNumberOfADCResolutionBits
-    ///
-    /// Get the resolution in bits of the ADC inputs
-    ///
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    uint32_t LowPassFilterFixedPt::GetNumberOfADCResolutionBits()
-    {
-        return m_AtoDResolutionBits;
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /// FUNCTION NAME: LowPassFilterFixedPt::GetNumberOfBitsInInt
-    ///
-    /// Get the number of bits in an int
-    ///
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    uint32_t LowPassFilterFixedPt::GetNumberOfBitsInInt()
-    {
-        return m_IntNumBitsInInt;
-    }
-
-    int32_t LowPassFilterFixedPt::ScaledMultiply(int32_t multiplicand, int32_t multiplier, uint32_t scaleFactor)
+    int32_t LowPassFilterFixedPt::ScaledMultiply(int32_t slMultiplicand, int32_t slMultiplier, uint32_t ulScaleFactor)
     {
         //
         // multiplicand integer part * multiplier integer part
@@ -258,32 +221,60 @@ namespace LowPassFilters
         //   result += ( mltplcndIntPartShftd * mltplrFracPart);
         //   result += ( ( mlplcndFracPart * mltplrFracPart ) + ( 1 << (scalefactor - 1) ) ) >> (scaleFactor -1 );
         // 
-        uint32_t  shiftFactor = scaleFactor - 1;
+        //   Example of multiplying two scaled 32 bit integers with a binary point at bit 15 
+        //     16 bits for the integer part and 16 bits for the fractional part.
+        //     integer part of Multiplicand = (Multiplicand & 0xffff0000) >> 16;
+        //     fractional part of Multiplicand =  Multiplicand & 0xffff;
+        //     integer part of Multiplier = (Multiplier & 0xffff0000) >> 16;
+        //     fractional part of Multipier = (Multiplier & 0xffff);
+        //     Multiplicand * Multiplier 
+        //          =    ( integer part of Multiplicand * integer part of Multiplier )
+        //             + ( ( integer part of Multiplicand * fractional part of Multiplier * 2**(-16) )
+        //             + ( integer part of Multiplier * fractional part of Multiplicand * 2**(-16) ) 
+        //             + (fractional part of Multiplicand * fractional part of Multiplier * 2**(-32)
+        //
+        //     A little explanation.  Since were using scaled 32 integers with 16 bits of fractional values then the fractional part of 
+        //     a scaled number represents the least significant 16 bits times 2**(-16).
+        //     the integer part of the same number is the most signficant 16 bits time 2**0.
+        //     Taking each part above
+        //     the product of (integer part of Multiplicand * integer part of Multiplier) needs to be shifted left 16 bits.
+        //     the product of ( integer part of Multiplicand * fractional part of Multiplier requires no shifing.
+        //     the product of ( integer part of Multiplier * fractional part of Multiplicand requires no shifing.
+        //     the product of ( fractional part of Multiplicand * fractional part of Multiplier requires rounding and then shifting.
+        //         since the product is number that is scaled to 2**-32 and there are only 16 bits of fractional value,
+        //         if 2**-17 is a one the number is rounded up by adding 1 * 2**(-17) IE 0x8000;
+        //         After rounding the product is shifted right 16 places to align with the binary point.
+        //
+        // The scale factor is the number of A/D resolution bits typically this routine applies to more than A/D filtering (just worked out that way)
+        // The reason that the shift factor is decremented because the calculation is a signed calculation and thus
+        // there is an extra bit allocated for the sign bit.
+        uint32_t  ulBinaryPtBitPos = ulScaleFactor - 1;
 
-        int32_t mltplrIntPartShftd = multiplier >> shiftFactor;
+        // Integer part of the multiplier
+        int32_t slMultiplierIntPart = TakeIntegerPartOfScaleddNmbrWithFixedBinaryPt(slMultiplier, ulBinaryPtBitPos);
 
-        int32_t mltplcndIntPartShftd = multiplicand >> shiftFactor;
+        // Integer part of the multiplicand
+        int32_t slMultiplicandIntPart = TakeIntegerPartOfScaleddNmbrWithFixedBinaryPt(slMultiplicand, ulBinaryPtBitPos);
 
-        uint32_t FracMask = 1 << shiftFactor;
+        // Fractional part of the mulitiplier by masking the fractional part;
+        uint32_t ulMultiplierFracPart = TakeFractionalPartOfScaleddNmbrWithFixedBinaryPt(slMultiplier, ulBinaryPtBitPos);
 
-        FracMask -= 1;
+        // Fractional part of the mulitiplier by masking the fractional part;
+        uint32_t ulMultiplicandFracPart = TakeFractionalPartOfScaleddNmbrWithFixedBinaryPt(slMultiplicand, ulBinaryPtBitPos);
 
-        uint32_t mltplrFracPart = multiplier & FracMask;
+        // Fractional part of the multiplicand * Fractional part of the multiplier rounded and then shifted to align with the binary point
+        int32_t slProductOfFractionalParts = TakeProductOfFractionalParts(ulMultiplicandFracPart, ulMultiplierFracPart, ulBinaryPtBitPos);
 
-        uint32_t mltplcndFracPart = multiplicand & FracMask;
+        // Integer part of the multiplier * Fractional part of the multiplicand no shifting required, binary alligned correctly
+        int32_t slProductOfIntPartAndFracParts = TakeProductOfIntPartAndFracPart(ulMultiplierIntPart, ulMultiplicandFracPart);
 
-        uint32_t roundoff = 1 << shiftFactor;
+        // Integer part of the multiplicand * fractional part of the multiplier shifted no shifting required, binary point aligned correctly.
+        slProductOfIntPartAndFracParts += TakeProductOfIntPartAndFracPart(slMultiplicandIntPart, ulMultiplicandFracPart);
 
-        int32_t result = ((!mltplcndFracPart || !mltplrFracPart) ? 0 : (((mltplcndFracPart * mltplrFracPart) + roundoff) >> shiftFactor));
-            
-        result += ((!mltplrIntPartShftd || !mltplcndIntPartShftd) ? 0 : (mltplrIntPartShftd * mltplcndIntPartShftd) << shiftFactor);
+        // Integer part of the multiplicand * Integer part of the multiplier rounded and then shifted to align with the binary point
+        int32_t slProductOfIntParts = TakeProductOfIntParts(slMultiplicandIntPart, slMultiplierIntPart, ulBinaryPtBitPos);
 
-        result += ((!mltplrIntPartShftd || !mltplcndFracPart) ? 0 : mltplcndIntPartShftd * mltplcndFracPart);
-
-        result += ((!mltplcndIntPartShftd || !mltplrFracPart) ? 0 : mltplcndIntPartShftd * mltplrFracPart);
-
-        return result;
-
-    }
+        return (slProductOfIntParts + slProductOfIntAndFracParts + slProductOfFractionalParts);
+   }
 };
 

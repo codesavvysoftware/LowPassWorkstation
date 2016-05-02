@@ -116,6 +116,31 @@ namespace LowPassFilters
         //**************************************************************************************************************
     
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// FUNCTION NAME: LowPassFilterFixedPt::CalcDiffEquation
+        ///
+        /// Calculate filtered output when applying the low pass filter
+        ///
+        /// @par Full Description
+        /// Virtual method for calculating filtered ADC value from the difference equation
+        /// y(n) = y(n-1) + LagCoefficient * ( Raw_ADC_value_read - y(n-1) )
+        /// where 
+        ///   LagCoefficient
+        ///    = (2 * pi * corner_frequenchy * sample_period ) / ( ( 2 * pi  * corner_frequenchy * sample_period ) + 2 )
+        ///
+        /// @pre    object created.
+        /// @post   Difference equation calculated.
+        ///
+        /// @param  fAtoDValueRead           Raw ADC data scaled to a binary point
+        /// @param  fLagCoefficient          Coefficient of the lag term.
+        /// @param  rfFilteredValue          Value of raw ADC data filtered
+        ///
+        /// @return  true when calculation occurred without error, false otherwise
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        bool LowPassNeosFilter::CalcDiffEquation(float        fAtoDValueRead,
+                                                 float        fLagCoefficient,
+                                                 float &      rfFilteredOutput);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPassNeosFilter::InitFilterDataForRestart
         ///
         /// Initialize filter data to put the filter in it's initial state
