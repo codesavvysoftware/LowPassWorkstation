@@ -68,14 +68,14 @@ namespace LowPassFilters
     /// Configure filter difference equation coefficients
     ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool LowPassFilterFixedPt::ConfigureFilter(uint32_t ulCornerFreq, uint32_t ulSamplePeriod)
+    bool LowPassFilterFixedPt::ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplePeriodUS)
     {
-        SetCornerFreq(ulCornerFreq);
+        SetCornerFreqHZ(ulCornerFreqHZ);
 
-        SetSamplingPeriod(ulSamplePeriod);
+        SetSamplingPeriodUS(ulSamplePeriodUS);
 
         // pi * corner_freq_hz * sample_period
-        uint64_t ullAccum = PI_OMEGA * ulCornerFreq * ulSamplePeriod;
+        uint64_t ullAccum = PI_OMEGA * ulCornerFreqHZ * ulSamplePeriodUS;
 
 
         // (1-pi * corner_freq_hz * sample_period)

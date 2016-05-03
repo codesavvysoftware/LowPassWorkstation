@@ -44,19 +44,19 @@ namespace LowPassFilters
         /// @pre    None
         /// @post   ADC Filter object instantiated for use in I/O connections.
         /// 
-        /// @param  uiCornerFreq         Initial corner frequency 
-        /// @param  uiSamplingPeriod     Sampling period for the filter
-        /// @param  LagCoefficient       InitialLagCoefficient
-        /// @param  AtoDResolutionBits   Bit resolution of ADC channels
+        /// @param  uiCornerFreqHZ         Initial corner frequency in herz
+        /// @param  uiSamplingPeriodUS     Sampling period for the filter in microseconds
+        /// @param  LagCoefficient         InitialLagCoefficient
+        /// @param  AtoDResolutionBits     Bit resolution of ADC channels
         /// 
         /// @return  None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        ADCFilter(uint32_t ulCornerFreq,
-                  uint32_t ulSamplingPeriod,
+        ADCFilter(uint32_t ulCornerFreqHZ,
+                  uint32_t ulSamplingPeriodUS,
                   uint32_t ulLagCoeffecient,
                   uint32_t ulAtoDResolutionBits)
             : m_slFrequencyShiftFactor(0),
-              LowPassFilterFixedPt( ulCornerFreq, ulSamplingPeriod, ulLagCoeffecient, ulAtoDResolutionBits, FIELD_SIDE_NUMBER_OF_POLES)
+              LowPassFilterFixedPt( ulCornerFreqHZ, ulSamplingPeriodUS, ulLagCoeffecient, ulAtoDResolutionBits, FIELD_SIDE_NUMBER_OF_POLES)
         {
         }
 
@@ -89,12 +89,12 @@ namespace LowPassFilters
         /// @post   ADC Filter applied when the filter is enabled.
         /// 
         /// @param  slAtoDValueRead           Raw ADC data read by the ADC driver
-        /// @param  ulCornerFreqToFilter      Corner Frequency for the filter.
+        /// @param  ulCornerFreqToFilterHZ    Corner Frequency for the filter in herz.
         /// @param  rslFilterOutput           Output from filter difference equation
         ///
         /// @return  true when the filter was applied, false otherwise
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        bool ApplyFilter(int32_t slAtoDValueRead, uint32_t ulCornerFreqToFilter,  int32_t & rslFilterOutput);
+        bool ApplyFilter(int32_t slAtoDValueRead, uint32_t ulCornerFreqToFilterHZ,  int32_t & rslFilterOutput);
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: ADCFilter::ConfigureFilter
@@ -108,12 +108,12 @@ namespace LowPassFilters
         /// @post   Filter is configured according to valid sample period and corner frequencies. Invalid parameters 
         /// @post   inhibit configuration.
         /// 
-        /// @param  ulCornerFreq         Corner Frequency for the filter
-        /// @param  ulSamplingPeriod     Sampling period for the filter in microseconds
+        /// @param  ulCornerFreqHZ         Corner Frequency for the filter in herz
+        /// @param  ulSamplingPeriodUS     Sampling period for the filter in microseconds
         ///
         /// @return  true when the filter was configured, false otherwise
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        bool ConfigureFilter(uint32_t ulCornerFreq, uint32_t ulSamplingPeriod);
+        bool ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodUS);
 
     private:
 

@@ -51,17 +51,17 @@ namespace LowPassFilters
         /// @pre    none
         /// @post   Base class object created for low filters that inherit it.
         /// 
-        /// @param  ulCornerFreq       Initial corner frequency 
-        /// @param  ulSamplingPeriod   Sampling period for the filter
-        /// @param  LagCoefficient     InitialLagCoefficient
+        /// @param  ulCornerFreqHZ       Initial corner frequency herz
+        /// @param  ulSamplingPeriodUS   Sampling period for the filter microseconds
+        /// @param  LagCoefficient       InitialLagCoefficient
         ///
         /// @return  None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        LowPass(uint32_t       ulCornerFreq,
-                uint32_t       ulSamplingPeriod,
+        LowPass(uint32_t       ulCornerFreqHZ,
+                uint32_t       ulSamplingPeriodUS,
                 NumericFormat  LagCoefficient)
-            : m_ulCornerFreq(ulCornerFreq),
-              m_ulSamplePeriod(ulSamplingPeriod),
+            : m_ulCornerFreqHZ(ulCornerFreqHZ),
+              m_ulSamplePeriodUS(ulSamplingPeriodUS),
               m_LagCoefficient(LagCoefficient),
               m_bFilteringEnabled(false),
               m_bFirstSample(true)
@@ -97,12 +97,12 @@ namespace LowPassFilters
         /// @post   None but all filters that inherit the base class must implement a method with this signature.
         /// 
         /// @param  adcValueRead     Raw ADC data read by the ADC driver
-        /// @param  ulCornerFreq     Corner Frequency for the filter.
+        /// @param  ulCornerFreqHZ   Corner Frequency for the filter in Herz.
         /// @param  rFilterOutput    Output from filter difference equation
         ///
         /// @return  true when the filter was applied, false otherwise
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        virtual bool ApplyFilter(NumericFormat adcValueRead, uint32_t ulCornerFreq, NumericFormat & rFilterOutput) = 0;
+        virtual bool ApplyFilter(NumericFormat adcValueRead, uint32_t ulCornerFreqHZ, NumericFormat & rFilterOutput) = 0;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPass::ConfigureFilter
@@ -115,12 +115,12 @@ namespace LowPassFilters
         /// @pre    none.
         /// @post   None but all filters that inherit the base class must implement a method with this signature.
         /// 
-        /// @param  ulCornerFreq         Corner Frequency for the filter
-        /// @param  ulSamplingPeriod     Sampling period for the filter in microseconds
+        /// @param  ulCornerFreqHZ         Corner Frequency for the filter in herz
+        /// @param  ulSamplingPeriodUS     Sampling period for the filter in microseconds
         ///
         /// @return  true when the filter was configured, false otherwise
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        virtual bool ConfigureFilter(uint32_t ulCornerFreq, uint32_t ulSamplingPeriod) = 0;
+        virtual bool ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodHZ) = 0;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPass::EnableFiltering()
@@ -278,21 +278,21 @@ namespace LowPassFilters
         /// @pre    Filter instantiated.
         /// @post   The filter is reconfigured with a new lag coefficient with valid sample period and corner frequency
         /// 
-        /// @param  ulCornerFreqForFilter     Corner frequency to reconfigure filter with
+        /// @param  ulCornerFreqForFilterHZ     Corner frequency to reconfigure filter with in herz
         ///
         /// @return  true when filter reconfigured successfully, false otherwise
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        bool ReconfigureWithNewCornerFrequencey(uint32_t ulCornerFreqToFilter)
+        bool ReconfigureWithNewCornerFrequencey(uint32_t ulCornerFreqToFilterHZ)
         {
-            uint32_t ulCornerFreq = GetCornerFreq();
+            uint32_t ulCornerFreqHZ = GetCornerFreqHZ();
 
             bool bConfigureSuccess = true;
 
-            if (ulCornerFreqToFilter != ulCornerFreq)
+            if (ulCornerFreqToFilterHZ != ulCornerFreqHZ)
             {
-                uint32_t ulSamplePeriod = GetSamplePeriod();
+                uint32_t ulSamplePeriodUS = GetSamplePeriodUS();
 
-                bConfigureSuccess = ConfigureFilter(ulCornerFreqToFilter, ulSamplePeriod);
+                bConfigureSuccess = ConfigureFilter(ulCornerFreqToFilterHZ, ulSamplePeriodUS);
             }
 
             return bConfigureSuccess;
@@ -309,9 +309,9 @@ namespace LowPassFilters
         /// @pre    none.
         /// @post   none.
         /// 
-        /// @return  The corner frequency the filter is configured for
+        /// @return  The corner frequency in herz the filter is configured for
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        inline uint32_t GetCornerFreq() { return m_ulCornerFreq; }
+        inline uint32_t GetCornerFreqHZ() { return m_ulCornerFreqHZ; }
 
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -325,10 +325,10 @@ namespace LowPassFilters
         /// @pre    none.
         /// @post   none.
         /// 
-        /// @return  The sample period the filter is configured for
+        /// @return  The sample period in microseconds the filter is configured for
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        inline uint32_t GetSamplePeriod() 
-		{ return m_ulSamplePeriod; }
+        inline uint32_t GetSamplePeriodUS() 
+		{ return m_ulSamplePeriodUS; }
 
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -375,12 +375,12 @@ namespace LowPassFilters
         /// @pre    none.
         /// @post   New corner frequency saved.
         /// 
-        /// @param  ulCornerFreq     Corner frequency for the filter
+        /// @param  ulCornerFreq     Corner frequency in herz for the filter
         ///
         /// @return  None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        inline void SetCornerFreq(uint32_t ulCornerFreq) 
-		{ m_ulCornerFreq = ulCornerFreq; }
+        inline void SetCornerFreqHZ(uint32_t ulCornerFreqHZ) 
+		{ m_ulCornerFreqHZ = ulCornerFreqHZ; }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPass::SetLagCoefficient
@@ -410,14 +410,14 @@ namespace LowPassFilters
         /// Set new sampling period to input sampling period.
         ///
         /// @pre    none.
-        /// @post   New sampling period saved.
+        /// @post   New sampling period in microseconds saved.
         /// 
         /// @param  uiSamplingPeriod     Sampling period for the filter
         ///
         /// @return  None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        inline void SetSamplingPeriod(uint32_t ulSamplingPeriod) 
-		{ m_ulSamplePeriod = ulSamplingPeriod; }
+        inline void SetSamplingPeriodUS(uint32_t ulSamplingPeriodUS) 
+		{ m_ulSamplePeriodUS = ulSamplingPeriodUS; }
 
     private:
         //**************************************************************************************************************
@@ -428,10 +428,10 @@ namespace LowPassFilters
         bool           m_bFilteringEnabled;
 
         // corner frequency for the filter
-        uint32_t       m_ulCornerFreq;
+        uint32_t       m_ulCornerFreqHZ;
 
         // sampling period for the filter
-        uint32_t       m_ulSamplePeriod;
+        uint32_t       m_ulSamplePeriodUS;
 
         // lag coefficient for the filter
         NumericFormat  m_LagCoefficient;

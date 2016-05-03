@@ -25,7 +25,7 @@
 
 namespace LowPassFilters
 {
-    static const float TWO_PI_SECONDS_PER_MICROSECOND = (2.0f * 3.1415927f * .000001f);
+    static const float LAG_COEFF_CONSTANT = (2.0f * 3.1415927f * .000001f);
 
     static const float VAL_FOR_RESET_REMAINDER        = 0.0f;
 
@@ -46,22 +46,22 @@ namespace LowPassFilters
         /// @par Full Description
         /// Base class contructor for the low pass filter using floating point arithmetic
         ///
-		/// @pre    none
-		/// @post   Object created.
-		///
-		/// @param  uiCornerFreq         Initial corner frequency 
-        /// @param  uiSamplingPeriod     Sampling period for the filter
-        /// @param  fLagCoefficient      InitialLagCoefficient
+        /// @pre    none
+        /// @post   Object created.
+        ///
+        /// @param  ulCornerFreqHZ         Initial corner frequency in Herz
+        /// @param  uiSamplingPeriodUS     Sampling period for the filter in microseconds
+        /// @param  fLagCoefficient        InitialLagCoefficient
         ///
         /// @return  None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
  
-        LowPassNeosFilter( uint32_t uiCornerFreq,
-                           uint32_t uiSamplingPeriod,
+        LowPassNeosFilter( uint32_t ulCornerFreqHZ,
+                           uint32_t ulSamplingPeriodUS,
                            float    fLagCoefficient)
             : m_fPrevFilteredValue(0.0),
               m_fRemainder(0.0),
-              LowPass(uiCornerFreq, uiSamplingPeriod, fLagCoefficient)
+              LowPass(ulCornerFreqHZ, ulSamplingPeriodUS, fLagCoefficient)
         {
         }
 
@@ -73,10 +73,10 @@ namespace LowPassFilters
         /// @par Full Description
         /// Base class Destructor for the low pass filter using floating point arithmetic
         ///
-		/// @pre    Object previously created
-		/// @post   Object destroyed
-		///
-		/// @return  None
+        /// @pre    Object previously created
+        /// @post   Object destroyed
+        ///
+        /// @return  None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         virtual ~LowPassNeosFilter()
         {
@@ -90,17 +90,17 @@ namespace LowPassFilters
         /// @par Full Description
         /// Virtual method for the applying the low pass filter
         ///
-		/// @pre    ADC Filter instantiated
-		/// @post   ADC Filter applied when the filter is enabled.
-		/// 
-		/// @param  fAtoDValueRead           Raw ADC data read by the ADC driver
-        /// @param  uiCornerFreqToFilter     Corner Frequency for the filter.
-        /// @param  rfFilterOutput           Output from filter difference equation
+        /// @pre    ADC Filter instantiated
+        /// @post   ADC Filter applied when the filter is enabled.
+        /// 
+        /// @param  fAtoDValueRead             Raw ADC data read by the ADC driver
+        /// @param  ulCornerFreqToFilterHZ     Corner Frequency for the filter in herz.
+        /// @param  rfFilterOutput             Output from filter difference equation
         ///
         /// @return  true when the filter was applied, false otherwise
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         bool ApplyFilter(float        fAtoDValueRead, 
-                         uint32_t     uiCornerFreqToFilter, 
+                         uint32_t     ulCornerFreqToFilterHZ, 
                          float &      rfFilterOutput);
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -111,15 +111,15 @@ namespace LowPassFilters
         /// @par Full Description
         /// Virtual method for the configuring the low pass filter
         ///
-		/// @pre    object created.
-		/// @post   filter configure to input corner frequency and sample period.
-		///
-		/// @param  uiCornerFreq         Corner Frequency for the filter
-        /// @param  uiSamplingPeriod     Sampling period for the filter in microseconds
+        /// @pre    object created.
+        /// @post   filter configure to input corner frequency and sample period.
+        ///
+        /// @param  ulCornerFreqHZ         Corner Frequency for the filter in Herz
+        /// @param  ulSamplingPeriodUS     Sampling period for the filter in microseconds
         ///
         /// @return  true when the filter was configured, false otherwise
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        bool ConfigureFilter(uint32_t uiCornerFreq, uint32_t uiSamplingPeriod); 
+        bool ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodUS); 
 
     protected:
 
@@ -160,12 +160,14 @@ namespace LowPassFilters
         /// @par Full Description
         /// virtual method for initializing filter data.
         ///
-		/// @pre    object created.
-		/// @post   filter parameters for restarting the filter initialized.
-		///
-		/// @return  None
+        /// @pre    object created.
+        /// @post   filter parameters for restarting the filter initialized.
+        ///
+        /// @return  None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        virtual void InitFilterDataForRestart(float InitialFilterOutput);
+        inline virtual void InitFilterDataForRestart(float InitialFilterOutput)
+        { m_fRemainder = VAL_FOR_RESET_REMAINDER; }
+
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPassNeosFilter::IsFilterResultValid
@@ -175,16 +177,18 @@ namespace LowPassFilters
         /// @par Full Description
         /// Method for determining the validity of the low filter output generated by difference equation
         ///
-		/// @pre    object created.
-		/// @post   none.
-		///
-		/// @param  DiffEqTerm1     First term of difference equation add
+        /// @pre    object created.
+        /// @post   none.
+        ///
+        /// @param  DiffEqTerm1     First term of difference equation add
         /// @param  DiffEqTerm2     Second term of difference equation add
         /// @param  fFilterOutput   Result of difference equation add
         ///
         /// @return  true when the result is valid, false otherwise
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        bool IsFilterOutputValid(float fDiffEqTerm1, float fDiffEqTerm2, float fFilterOutput);
+        inline virtual bool IsFilterOutputValid(float fDiffEqTerm1, float fDiffEqTerm2, float fFilterOutput)
+        { return (IsFloatValid(fDiffEqTerm1) && IsFloatValid(fDiffEqTerm2) && IsFloatValid(fFilterOutput)); }
+
 
     private:
         
@@ -206,14 +210,15 @@ namespace LowPassFilters
         /// @par Full Description
         /// Method for determining the validity of a float
         ///
-		/// @pre    object created.
-		/// @post   none.
-		///
-		/// @param  f     Float number to check
+        /// @pre    object created.
+        /// @post   none.
+        ///
+        /// @param  f     Float number to check
         ///
         /// @return  true when input float val is valid, false otherwise
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        bool IsFloatValid(float f);
+        inline bool IsFloatValid(float f)
+        { return (!isnan(f) && !isinf(f)); }
 
         // inhibit default constructor, copy constructor, and assignment
         LowPassNeosFilter();

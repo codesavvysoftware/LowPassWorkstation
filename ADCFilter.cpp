@@ -34,7 +34,7 @@ namespace LowPassFilters
     /// Apply the low pass filter difference equation to unfiltered ADC input data
     ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool ADCFilter::ApplyFilter(int32_t slAtoDValueRead, uint32_t ulCornerFreqToFilter,  int32_t & rslFilterOutput)
+    bool ADCFilter::ApplyFilter(int32_t slAtoDValueRead, uint32_t ulCornerFreqToFilterHZ,  int32_t & rslFilterOutput)
     {
         int32_t slScaledAtoD = slAtoDValueRead << 15;
 
@@ -47,7 +47,7 @@ namespace LowPassFilters
             return false;
         }
 
-        bool bReconfigureFailure = !ReconfigureWithNewCornerFrequencey(ulCornerFreqToFilter);
+        bool bReconfigureFailure = !ReconfigureWithNewCornerFrequencey(ulCornerFreqToFilterHZ);
 
         if (bReconfigureFailure)
         {
@@ -125,7 +125,7 @@ namespace LowPassFilters
     /// Configure filter difference equation coefficients
     ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool ADCFilter::ConfigureFilter(uint32_t ulCornerFreq, uint32_t ulSamplingPeriod)
+    bool ADCFilter::ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodUS)
     {
         bool    bFilterConfigured = true;
 
@@ -139,7 +139,7 @@ namespace LowPassFilters
 
         int slSmallestShiftFactor = slBitsToRightOfIntMSBForAtoDRsltn - slBitsToRightOfIntMSBForNoShift;
 
-        switch (ulCornerFreq)
+        switch (ulCornerFreqHZ)
         {
         case FREQ_100_HZ:
                 
@@ -186,7 +186,7 @@ namespace LowPassFilters
 
         if (bFilterConfigured)
         {
-            SetCornerFreq(ulCornerFreq);
+            SetCornerFreqHZ(ulCornerFreqHZ);
         }
 
         return bFilterConfigured;

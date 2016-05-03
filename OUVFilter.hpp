@@ -41,18 +41,18 @@ namespace LowPassFilters
         /// @par Full Description
         /// Constructor for filtering using fixed point arritmetic but is only configured at instantiation time
         ///
-        /// @param  uiCornerFreq         Initial corner frequency 
-        /// @param  uiSamplingPeriod     Sampling period for the filter
+        /// @param  ulCornerFreqHZ       Initial corner frequency in herz
+        /// @param  ulSamplingPeriodUS   Sampling period for the filter in microseconds
         /// @param  LagCoefficient       InitialLagCoefficient
         /// @param  AtoDResolutionBits   Bit resolution of ADC channels
         /// 
         /// @return  None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        OUVFilter(uint32_t uiCornerFreq,
-                  uint32_t uiSamplingPeriod,
+        OUVFilter(uint32_t uiCornerFreqHZ,
+                  uint32_t ulSamplingPeriodUS,
                   uint32_t LagCoeffecient,
                   uint32_t AtoDResolutionBits)
-            : LowPassFilterFixedPt(uiCornerFreq, uiSamplingPeriod, LagCoeffecient, AtoDResolutionBits)
+            : LowPassFilterFixedPt(uiCornerFreqHZ, ulSamplingPeriodUS, LagCoeffecient, AtoDResolutionBits)
         {
         }
 
@@ -78,12 +78,12 @@ namespace LowPassFilters
         /// @par Full Description
         /// Method for configuring the low pass filter that is just a return.
         ///
-        /// @param  uiCornerFreq         Corner Frequency for the filter
-        /// @param  uiSamplingPeriod     Sampling period for the filter in microseconds
+        /// @param  uiCornerFreqHZ         Corner Frequency for the filter in herz
+        /// @param  uiSamplingPeriodUS     Sampling period for the filter in microseconds
         ///
         /// @return  true when the filter was configured, false otherwise
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        bool ConfigureFilter(uint32_t uiCornerFreq, unsigned uiSamplingPeriod)
+        bool ConfigureFilter(uint32_t uiCornerFreqHZ, unsigned uiSamplingPeriodUS)
         {
             return true;
         }

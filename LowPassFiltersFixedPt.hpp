@@ -44,16 +44,16 @@ namespace LowPassFilters
         /// @pre    none
         /// @post   Object created for low filters that inherit it.
         /// 
-        /// @param  ulCornerFreq           Initial corner frequency 
-        /// @param  ulSamplingPeriod       Sampling period for the filter
+        /// @param  ulCornerFreqHZ         Initial corner frequency in herz
+        /// @param  ulSamplingPeriodUS     Sampling period for the filter in microseconds
         /// @param  ulLagCoefficient       InitialLagCoefficient
         /// @param  ulAtoDResolutionBits   Bit resolution of ADC channels
         /// @param  ulNumberOfPoles        Number of poles the filter implements
         ///
         /// @return  None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        LowPassFilterFixedPt(uint32_t ulCornerFreq,
-                             uint32_t ulSamplingPeriod,
+        LowPassFilterFixedPt(uint32_t ulCornerFreqHZ,
+                             uint32_t ulSamplingPeriodUS,
                              uint32_t ulLagCoeffecient,
                              uint32_t ulAtoDResolutionBits,
                              uint32_t ulNumberOfPoles = DEFAULT_NUMBER_OF_POLES)
@@ -64,7 +64,7 @@ namespace LowPassFilters
               m_ulIntMSBSet(MOST_SIGNIFICANT_BIT_OF_UINT_VALS),
               m_ulIntNumBitsInInt(NUMBER_OF_BITS_IN_SIGNED_LONG_VALS),
               m_ulNumberOfPoles(ulNumberOfPoles),
-              LowPass<int32_t>(ulCornerFreq, ulSamplingPeriod, ulLagCoeffecient)
+              LowPass<int32_t>(ulCornerFreqHZ, ulSamplingPeriodUS, ulLagCoeffecient)
         {
         }
 
@@ -97,12 +97,12 @@ namespace LowPassFilters
         /// @post   filter applied to input A to D value when filter is enabled.
         ///
         /// @param  slAdcValueRead     Raw ADC data read by the ADC driver
-        /// @param  ulCornerFreq       Corner Frequency for the filter.
+        /// @param  ulCornerFreqHZ     Corner Frequency for the filter in herz
         /// @param  rslFilterOutput    Output from filter difference equation
         ///
         /// @return  true when the filter was applied, false otherwise
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        virtual bool ApplyFilter(int32_t slAtoDValueRead, uint32_t ulCornerFreqToFilter, int32_t & rslFilterOutput);
+        virtual bool ApplyFilter(int32_t slAtoDValueRead, uint32_t ulCornerFreqToFilterHZ, int32_t & rslFilterOutput);
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPassFilterFixedPt::ConfigureFilter
@@ -115,12 +115,12 @@ namespace LowPassFilters
         /// @pre    object created.
         /// @post   filter configure to input corner frequency and sample period.
         ///
-        /// @param  uiCornerFreq         Corner Frequency for the filter
-        /// @param  uiSamplingPeriod     Sampling period for the filter in microseconds
+        /// @param  uiCornerFreqHZ         Corner Frequency for the filter herz
+        /// @param  uiSamplingPeriodUS     Sampling period for the filter in microseconds
         ///
         /// @return  true when the filter was configured, false otherwise
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        virtual bool ConfigureFilter(uint32_t ulCornerFreq, uint32_t ulSamplePeriod);
+        virtual bool ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplePeriodUS);
 
     protected:
         //**************************************************************************************************************
@@ -384,7 +384,7 @@ namespace LowPassFilters
         const static uint64_t ONE_PT_ZERO_SCALED_BINARY_PT = 0x100000000;
         
         // Bit position of most significant bit in unsigned int vals.
-        const static uint32_t MOST_SIGNIFICANT_BIT_OF_UINT_VALS = INT_MAX + 1;
+        const static uint32_t MOST_SIGNIFICANT_BIT_OF_UINT_VALS = static_cast<uint32_t>(INT_MAX) + 1;
             
         // Number of bits in an int value
         const static uint32_t NUMBER_OF_BITS_IN_SIGNED_LONG_VALS = sizeof(int) * CHAR_BIT;

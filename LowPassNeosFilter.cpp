@@ -35,14 +35,17 @@ namespace LowPassFilters
     ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     bool LowPassNeosFilter::ApplyFilter(float        fAtoDValueRead,
-        uint32_t     ulCornerFreqToFilter,
-        float &      rfFilterOutput)
+                                        uint32_t     ulCornerFreqToFilterHz,
+                                        float &      rfFilterOutput)
     {
         rfFilterOutput = fAtoDValueRead;
 
-		bool bSuccess = true;
+        bool bSuccess = true;
 
-        if ( !IsFilteringEnabled() || !ReconfigureWithNewCornerFrequencey(ulCornerFreqToFilter))
+        if ( 
+                !IsFilteringEnabled() 
+             || !ReconfigureWithNewCornerFrequencey(ulCornerFreqToFilterHz)
+           )
         {
             bSuccess = false;
         }
@@ -75,20 +78,20 @@ namespace LowPassFilters
 
         // Check to make sure the value isn't subnormal and trying to get to 0, if so we want to help it by setting 0
         // Subnormal check include inf/nan/zero, we don't want that so check those out too
-        bool bFilterOutputNotValid = !IsFilterOutputValid( m_fPrevFilteredValue, fDiff, fFilteredValue );
-
-        if (bFilterOutputNotValid)
+        if (!IsFilterOutputValid(m_fPrevFilteredValue, fDiff, fFilteredValue))
         {
             RestartFiltering();
 
             return false;
         }
         
-        if (fAtoDValueRead == 0.0f)
+        if (fAtoDValueRead == 0
+            && fpclassify(fFilteredValue) == FP_SUBNORMAL)
         {
+            // filter output is extremely near 0, headed to 0, but not 0.
+            // round to 0
             fFilteredValue = 0.0f;
         }
-
         //Check to make sure the diff was useful if not store it in the remainder until it becomes useful
         if (
                  (fFilteredValue == m_fPrevFilteredValue)
@@ -115,59 +118,56 @@ namespace LowPassFilters
     /// Configure filter difference equation coefficients
     ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool LowPassNeosFilter::ConfigureFilter(uint32_t uiCornerFreq, uint32_t uiSamplingPeriod)
+    bool LowPassNeosFilter::ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodUS)
     {
-        SetCornerFreq(uiCornerFreq);
+        //
+        // HZ represents hertz
+        //
+        SetCornerFreqHZ(ulCornerFreqHZ);
 
-        SetSamplingPeriod(uiSamplingPeriod);
+        //
+        // Us represents microseconds
+        //
+        SetSamplingPeriodUS(ulSamplingPeriodUS);
 
-        float TwoPiOmegaF = static_cast<float>(uiCornerFreq);
+        // 
+        // The difference equation implemented is 
+        // y(n) = y(n-1) + LagCoefficient * (x(n) - y(n-1))
+        // 
+        // Where:
+        //   y(n) == Value when filter applied
+        //   y(n-1) == Previous filter output.
+        //   LagCoefficient = Constant value that will be discussed subsequently
+        //   x(n) == Current A to D value to filter.
+        //     
+        //   LagCoefficient is the 
+        //   (CornerFrequencyInRadiansPerSecond * SamplingPeriodInSeconds ) / (2 + (CornerFrequencyInRadiansPerSecond * SamplingPeriodInSeconds)
+        //   LagCoefficient is derived from taking the following first order low pass filter S transform:
+        //      1/(RCTimeConstant * s) and using the Tustin approximation for z which is
+        //          z = (2/SamplingPeriod) * ((z-1)/(z+1))
+        //
+        //   The product of the CornerFrequencyInRadiansPerSecond * SamplingPeriodMicroSeconds is unitless
+        //      CornerFrequencyInRadiansPerSecond == 2 * PI * CornerFreqHz
+        //      the units are radians per second.
+        //   The SamplingPeriodInSeconds = ulSamplingPeriodUs * .000001 seconds/per micosecond
+        //   So to the following is used to compute the product of the CornerFequencyInRadiansPerSecond * SamplingPeriodInSeconds
+        //        2 * PI * ulCornerFreqHz * ulSamplingPeriodUs * .000001
+        //        Breaking this up (using associative law of multiplication) into a compile time constant multiplied by a run time value 
+        //        we can state the following:
+        //            Compile time constant == 2 * PI * .000001
+        //            Run Time Value        == ulCornerFreqHz * ulSamplingPeriodUs
+        //            if we call the compile constant = LAG_COEFF_CONSTANT then
+        //            LagCoefficient = (LAG_COEFF_CONSTANT * ulCornerFreqHz * ulSamplingPeriodUs) / (2.0 + (LAG_COEFF_CONSTANT * ulCornerFreqHz * ulSamplingPeriodUs));
+        //       In order to compute the following only once (LAG_COEFF_CONSTANT * ulCornerFreqHz * ulSamplingPeriodUs)
+        //       An automatic float var is used fLagConstCornerFreqSamplingPeriodProduct.
+        //       Therefore
+        //           LagCoefficient = LagConstCornerFreqSamplingPeriodProduct / (2.0 * LagConstCornerFreqSamplingPeriodProduct ) 
+        float fLagConstCornerFreqSamplingPeriodProduct = LAG_COEFF_CONSTANT * static_cast<float>(ulCornerFreqHZ) * static_cast<float>(ulSamplingPeriodUS);
 
-        TwoPiOmegaF *= static_cast<float>(uiSamplingPeriod);
+        float fLagCoefficient = fLagConstCornerFreqSamplingPeriodProduct / (TWO_PT_ZERO + fLagConstCornerFreqSamplingPeriodProduct);
 
-        TwoPiOmegaF *= TWO_PI_SECONDS_PER_MICROSECOND;
-            
-        float LagCoefficient = TwoPiOmegaF / (TWO_PT_ZERO + TwoPiOmegaF);
-
-        SetLagCoefficient(LagCoefficient);
+        SetLagCoefficient(fLagCoefficient);
 
         return true;
-    }
-
-    //**************************************************************************************************************
-    // Protected methods and attributes
-    //**************************************************************************************************************
-    
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /// FUNCTION NAME: LowPassNeosFilter::InitFilterDataForRestart
-    ///
-    /// Initialize filter data to put the filter in it's initial state
-    ///
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    void LowPassNeosFilter::InitFilterDataForRestart(float InitialFilterOutput)
-    {            
-        m_fRemainder = VAL_FOR_RESET_REMAINDER;
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /// FUNCTION NAME: LowPassNeosFilter::IsFilterResultValid
-    ///
-    /// Determine validity of low pass filter output
-    ///
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool LowPassNeosFilter::IsFilterOutputValid(float fDiffEqTerm1, float fDiffEqTerm2, float fFilterOutput)
-    {
-        return (IsFloatValid(fDiffEqTerm1) && IsFloatValid(fDiffEqTerm2) && IsFloatValid(fFilterOutput));
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /// FUNCTION NAME: LowPassNeosFilter::IsFloatValid
-    ///
-    /// Determine validity of input float
-    ///
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool LowPassNeosFilter::IsFloatValid(float f)
-    {
-      return (!isnan(f) && !isinf(f));
     }
 };
