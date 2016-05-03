@@ -7,7 +7,7 @@
 namespace LowPassOfflineTesting
 {
     using namespace LowPassFilters;
-    static OUVFilter  OUV(100, 50, 0x1fa, 16);
+    //static OUVFilter  OUV(100, 50, 0x1fa, 16);
 
 	static const int x = 0;
 

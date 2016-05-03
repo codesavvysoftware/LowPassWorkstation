@@ -7,7 +7,7 @@
 ///
 /// @if REVISION_HISTORY_INCLUDED
 /// @par Edit History
-/// - thaley1   22-Apr-2016 Original Implementation
+/// - thaley1   03-May-2016 Original Implementation
 /// @endif
 ///
 /// @ingroup ???
@@ -73,9 +73,9 @@ namespace LowPassFilters
             //  y(n) = y(n-1) + ((AtoDRead << (AtoDResolution - 1)) - y(n-1)) >>  m_FrequencyShiftFactor
             //
             // ((AtoDRead << (AtoDResolution - 1)) - y(n-1)
-            int32_t slLagTerm = iCurrentFilterOutput - m_slPole[sl];
+            int32_t slLagTerm = slCurrentFilterOutput - m_slPole[sl];
 
-            bool bInvalidFilterOutput = !IsFilterOutputValid(iLagTerm, iCurrentFilterOutput, m_slPole[sl]);
+            bool bInvalidFilterOutput = !IsFilterOutputValid(slLagTerm, slCurrentFilterOutput, m_slPole[sl]);
 
             if (bInvalidFilterOutput)
             {
@@ -87,19 +87,19 @@ namespace LowPassFilters
             }
                     
             // ((AtoDRead << (AtoDResolution - 1)) - y(n-1)) >>  m_FrequencyShiftFactor
-            if (m_ulFrequencyShiftFactor < 0)
+            if (m_slFrequencyShiftFactor < 0)
             {
-                slLagTerm <<= (-m_ulFrequencyShiftFactor);
+                slLagTerm <<= (-m_slFrequencyShiftFactor);
             }
             else
             {
-                slLagTerm >>= m_FrequencyShiftFactor;
+                slLagTerm >>= m_slFrequencyShiftFactor;
             }
 
             //  y(n) = y(n-1) + ((AtoDRead << (AtoDResolution - 1)) - y(n-1)) >>  m_FrequencyShiftFactor
-            slCurrentFilterOutput = m_slPole[i] + slLagTerm;
+            slCurrentFilterOutput = m_slPole[sl] + slLagTerm;
 
-            bInvalidFilterOutput = IsThereOverflowFromAddSbtrct(m_slPole[i], slLagTerm, slCurrentFilterOutput);
+            bInvalidFilterOutput = IsThereOverflowFromAddSbtrct(m_slPole[sl], slLagTerm, slCurrentFilterOutput);
 
             if (bInvalidFilterOutput)
             {
@@ -111,7 +111,7 @@ namespace LowPassFilters
             }
 
             // For multiple poles
-            m_slPole[i] = slCurrentFilterOutput;
+            m_slPole[sl] = slCurrentFilterOutput;
         }
 
         rslFilterOutput = slCurrentFilterOutput;
@@ -139,7 +139,7 @@ namespace LowPassFilters
 
         int slSmallestShiftFactor = slBitsToRightOfIntMSBForAtoDRsltn - slBitsToRightOfIntMSBForNoShift;
 
-        switch (uiCornerFreq)
+        switch (ulCornerFreq)
         {
         case FREQ_100_HZ:
                 

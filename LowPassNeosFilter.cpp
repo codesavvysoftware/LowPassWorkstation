@@ -7,7 +7,7 @@
 ///
 /// @if REVISION_HISTORY_INCLUDED
 /// @par Edit History
-/// - thaley 20-Apr-2016 Original implementation
+/// - thaley 03-May-2016 Original implementation
 /// @endif
 ///
 /// @ingroup ???
@@ -35,18 +35,18 @@ namespace LowPassFilters
     ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     bool LowPassNeosFilter::ApplyFilter(float        fAtoDValueRead,
-        uint32_t     uiCornerFreqToFilter,
+        uint32_t     ulCornerFreqToFilter,
         float &      rfFilterOutput)
     {
         rfFilterOutput = fAtoDValueRead;
 
-        bool bSuccess = true
+		bool bSuccess = true;
 
-        if ((!IsFilteringEnabled() || !ReconfigureWithNewCornerFrequencey(ulCornerFreqToFilter))
+        if ( !IsFilteringEnabled() || !ReconfigureWithNewCornerFrequencey(ulCornerFreqToFilter))
         {
             bSuccess = false;
         }
-        else if (HasFilterRestarted(rslFilterOutput))
+        else if (HasFilterRestarted(rfFilterOutput))
         {
             m_fPrevFilteredValue = fAtoDValueRead;
         }
@@ -75,7 +75,7 @@ namespace LowPassFilters
 
         // Check to make sure the value isn't subnormal and trying to get to 0, if so we want to help it by setting 0
         // Subnormal check include inf/nan/zero, we don't want that so check those out too
-        bool bFilterOutpuNotValid = !IsFilterOutputValid( m_fPrevFilteredValue, fDiff, fFilteredValue );
+        bool bFilterOutputNotValid = !IsFilterOutputValid( m_fPrevFilteredValue, fDiff, fFilteredValue );
 
         if (bFilterOutputNotValid)
         {
@@ -102,7 +102,7 @@ namespace LowPassFilters
             m_fRemainder = 0.0f;
         }
 
-        rfFilterOutput = fFilteredValue;
+        rfFilteredOutput = fFilteredValue;
 
         m_fPrevFilteredValue = fFilteredValue;
 

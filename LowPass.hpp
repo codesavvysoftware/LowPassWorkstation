@@ -5,7 +5,7 @@
 ///
 /// @if REVISION_HISTORY_INCLUDED
 /// @par Edit History
-/// - thaley 20-Apr-2016 Original implementation
+/// - thaley 03-May-2016 Original implementation
 /// @endif
 ///
 /// @ingroup ???
@@ -60,8 +60,8 @@ namespace LowPassFilters
         LowPass(uint32_t       ulCornerFreq,
                 uint32_t       ulSamplingPeriod,
                 NumericFormat  LagCoefficient)
-            : m_ulCornerFreq(uiCornerFreq),
-              m_ulSamplePeriod(uiSamplingPeriod),
+            : m_ulCornerFreq(ulCornerFreq),
+              m_ulSamplePeriod(ulSamplingPeriod),
               m_LagCoefficient(LagCoefficient),
               m_bFilteringEnabled(false),
               m_bFirstSample(true)
@@ -197,9 +197,9 @@ namespace LowPassFilters
         ///
         /// @return  true when calculation occurred without error, false otherwise
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        bool CalcDiffEquation(NumericFormat   AtoDValue,
-                              NumericFormat   LagCoefficient,
-                              NumericFormat   FilteredValue) = 0;
+        virtual bool CalcDiffEquation(NumericFormat   AtoDValue,
+                                      NumericFormat   LagCoefficient,
+                                      NumericFormat & FilteredValue) = 0; 
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPass::InitFilterDataForRestart
@@ -288,7 +288,7 @@ namespace LowPassFilters
 
             bool bConfigureSuccess = true;
 
-            if (ulCornerFreqToFilter != uiCornerFreq)
+            if (ulCornerFreqToFilter != ulCornerFreq)
             {
                 uint32_t ulSamplePeriod = GetSamplePeriod();
 
@@ -327,7 +327,8 @@ namespace LowPassFilters
         /// 
         /// @return  The sample period the filter is configured for
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        inline uint32_t GetSamplePeriod() { return m_ulSamplePeriod; }
+        inline uint32_t GetSamplePeriod() 
+		{ return m_ulSamplePeriod; }
 
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -343,7 +344,8 @@ namespace LowPassFilters
         /// 
         /// @return  The lag coefficient the filter is configured for
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        inline NumericFormat GetLagCoefficient() { return m_LagCoefficient; }
+        inline NumericFormat GetLagCoefficient() 
+		{ return m_LagCoefficient; }
 
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -359,7 +361,8 @@ namespace LowPassFilters
         /// 
         /// @return  None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        inline void RestartFiltering() { m_bFirstSample = false; }
+        inline void RestartFiltering() 
+		{ m_bFirstSample = false; }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPass::SetCornerFreq
@@ -376,7 +379,8 @@ namespace LowPassFilters
         ///
         /// @return  None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        inline void SetCornerFreq(uint32_t ulCornerFreq) { m_ulCornerFreq = uiCornerFreq; }
+        inline void SetCornerFreq(uint32_t ulCornerFreq) 
+		{ m_ulCornerFreq = ulCornerFreq; }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPass::SetLagCoefficient
@@ -393,7 +397,8 @@ namespace LowPassFilters
         ///
         /// @return  The lag coefficient the filter is configured for
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        inline void SetLagCoefficient(NumericFormat LagCoefficient) { m_LagCoefficient = LagCoefficient; }
+        inline void SetLagCoefficient(NumericFormat LagCoefficient) 
+		{ m_LagCoefficient = LagCoefficient; }
 
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -411,7 +416,8 @@ namespace LowPassFilters
         ///
         /// @return  None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        inline void SetSamplingPeriod(uint32_t uiSamplingPeriod) { m_uiSamplePeriod = uiSamplingPeriod; }
+        inline void SetSamplingPeriod(uint32_t ulSamplingPeriod) 
+		{ m_ulSamplePeriod = ulSamplingPeriod; }
 
     private:
         //**************************************************************************************************************

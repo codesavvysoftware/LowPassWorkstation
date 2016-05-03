@@ -7,7 +7,7 @@
 ///
 /// @if REVISION_HISTORY_INCLUDED
 /// @par Edit History
-/// - thaley1   22-Apr-2016 Original Implementation
+/// - thaley1   03-May-2016 Original Implementation
 /// @endif
 ///
 /// @ingroup ???
@@ -22,7 +22,6 @@
 
 // C++ PROJECT INCLUDES
 #include "LowPassFiltersFixedPt.hpp"
-//using namespace LowPassFilters;
 
 namespace LowPassFilters
 {
@@ -45,11 +44,15 @@ namespace LowPassFilters
         
         rslFilterOutput = slScaledAtoD;
 
-        if ((!IsFilteringEnabled() || !ReconfigureWithNewCornerFrequencey(ulCornerFreqToFilter))
+        if (    !IsFilteringEnabled() 
+			 || !ReconfigureWithNewCornerFrequencey(ulCornerFreqToFilter)
+           )
         {
             bSuccess = false;
         }
-        else if (!HasFilterRestarted(rslFilterOutput) && !CalcDiffEquation(slScaledAtoD, GetLagCoefficient(), rslFilterOutput))
+        else if (    !HasFilterRestarted(rslFilterOutput) 
+			      && !CalcDiffEquation(slScaledAtoD, GetLagCoefficient(), rslFilterOutput)
+			    )
         {
             RestartFiltering();
 
@@ -108,20 +111,8 @@ namespace LowPassFilters
         {
             m_slPole[ul] = slInitialFilterOutput;
         }
-    }                                                                         u
+	}                                                                         
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /// FUNCTION NAME: LowPassFilterFixedPt::IsFilterResultValid
-    ///
-    /// Determine validity of low pass filter output
-    ///
-    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool LowPassFilterFixedPt::IsFilterOutputValid(int32_t slDiffEqTerm1, int32_t slDiffEqTerm2, int32_t slFilterOuput)
-    {
-        bool bFilterOutputValid = !IsThereOverflowFromAddSbtrct(slDiffEqTerm1, slDiffEqTerm2, slFilterOuput);
-
-        return bFilterOutputValid;
-    }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     /// FUNCTION NAME: LowPassFilterFixedPt::IsThereOverflowFromAddSbtrct
@@ -144,11 +135,11 @@ namespace LowPassFilters
         //
         uint32_t ulTerm1MSB = ulTerm1 & m_ulIntMSBSet;
 
-        uint32_t ulTerm2MSB = uiTerm2 & m_ulIntMSBSet;
+        uint32_t ulTerm2MSB = ulTerm2 & m_ulIntMSBSet;
 
         uint32_t ulResultMSB = ulResult & m_ulIntMSBSet;
 
-        if (!(uiTerm1MSB ^ uiTerm2MSB) && (uiTerm1MSB ^ uiResultMSB))
+        if (!(ulTerm1MSB ^ ulTerm2MSB) && (ulTerm1MSB ^ ulResultMSB))
         {
             bOverflowOccurred = true;
         }
@@ -177,27 +168,27 @@ namespace LowPassFilters
         {
             int32_t slSecondTermOfDiffEq = slCurrentFilterResult - m_slPole[ul];
 
-            bool bSubtractionOverflowed = IsThereOverflowFromAddSbtrct(iCurrentFilterResult, m_slPole[ul], slSecondTermOfDiffEq);
+            bool bSubtractionOverflowed = IsThereOverflowFromAddSbtrct(slCurrentFilterResult, m_slPole[ul], slSecondTermOfDiffEq);
 
             if (bSubtractionOverflowed)
             {
                 return false;
             }
 
-           sliCurrentFilterResult = ScaledMultiply(slSecondTermOfDiffEq, slLagCoefficient);
+           slCurrentFilterResult = ScaledMultiply(slSecondTermOfDiffEq, slLagCoefficient);
 
             int32_t slLagValue = slCurrentFilterResult;
 
-            slCurrentFilterResult += m_slPole[i];
+            slCurrentFilterResult += m_slPole[ul];
 
-            bool bAdditionOverflowed = IsThereOverflowFromAddSbtrct(slLagValue, m_slPole[i], slCurrentFilterResult);
+            bool bAdditionOverflowed = IsThereOverflowFromAddSbtrct(slLagValue, m_slPole[ul], slCurrentFilterResult);
 
             if (bAdditionOverflowed)
             {
                 return false;
             }
 
-            m_slPole[i] = slCurrentFilterResult;
+            m_slPole[ul] = slCurrentFilterResult;
 
         }
 
@@ -211,6 +202,12 @@ namespace LowPassFilters
         //
         // multiplicand integer part * multiplier integer part
         //
+		//   Scaled Fixed Point Number with 16 bits of fractional precsion
+		//
+		//   Bit
+		//   31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 09 08 07 06 05 04 03 02 01 00
+		//   ----------------Integer Part-------------------|------------Fractional Part--------------------
+		//
         //   Shift multiplier integer part right so LSB is at bit 0.  Save in mltplrIntPartShftd.
         //   Shift multiplicand integer part right so LSB is at bit 0. Save in mltplcndIntPartShftd.
         //   Mask off integer part of multiplier and save in mlplrFracPart;
@@ -263,18 +260,30 @@ namespace LowPassFilters
         uint32_t ulMultiplicandFracPart = TakeFractionalPartOfScaleddNmbrWithFixedBinaryPt(slMultiplicand, ulBinaryPtBitPos);
 
         // Fractional part of the multiplicand * Fractional part of the multiplier rounded and then shifted to align with the binary point
-        int32_t slProductOfFractionalParts = TakeProductOfFractionalParts(ulMultiplicandFracPart, ulMultiplierFracPart, ulBinaryPtBitPos);
+        int32_t slProductOfFractionalParts = TakeProductOfFracParts(ulMultiplicandFracPart, ulMultiplierFracPart, ulBinaryPtBitPos);
 
         // Integer part of the multiplier * Fractional part of the multiplicand no shifting required, binary alligned correctly
-        int32_t slProductOfIntPartAndFracParts = TakeProductOfIntPartAndFracPart(ulMultiplierIntPart, ulMultiplicandFracPart);
+        int32_t slProductOfIntAndFracParts = TakeProductOfIntPartAndFracPart(slMultiplierIntPart, ulMultiplicandFracPart);
 
         // Integer part of the multiplicand * fractional part of the multiplier shifted no shifting required, binary point aligned correctly.
-        slProductOfIntPartAndFracParts += TakeProductOfIntPartAndFracPart(slMultiplicandIntPart, ulMultiplicandFracPart);
+        slProductOfIntAndFracParts += TakeProductOfIntPartAndFracPart(slMultiplicandIntPart, ulMultiplierFracPart);
 
         // Integer part of the multiplicand * Integer part of the multiplier rounded and then shifted to align with the binary point
         int32_t slProductOfIntParts = TakeProductOfIntParts(slMultiplicandIntPart, slMultiplierIntPart, ulBinaryPtBitPos);
 
         return (slProductOfIntParts + slProductOfIntAndFracParts + slProductOfFractionalParts);
    }
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/// FUNCTION NAME: LowPassFilterFixedPt::IsFilterResultValid
+	///
+	/// Determine validity of low pass filter output
+	///
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	bool LowPassFilterFixedPt::IsFilterOutputValid(int32_t slDiffEqTerm1, int32_t slDiffEqTerm2, int32_t slFilterOuput)
+	{
+		bool bFilterOutputValid = !IsThereOverflowFromAddSbtrct(slDiffEqTerm1, slDiffEqTerm2, slFilterOuput);
+
+		return bFilterOutputValid;
+	}
 };
 

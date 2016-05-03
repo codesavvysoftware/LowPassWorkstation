@@ -6,7 +6,7 @@
 ///
 /// @if REVISION_HISTORY_INCLUDED
 /// @par Edit History
-/// - thaley 20-Apr-2016 Original implementation
+/// - thaley 03-May-2016 Original implementation
 /// @endif
 ///
 /// @ingroup NeoS Low Pass Filtering
@@ -55,7 +55,7 @@ namespace LowPassFilters
                   uint32_t ulSamplingPeriod,
                   uint32_t ulLagCoeffecient,
                   uint32_t ulAtoDResolutionBits)
-            : m_FrequencyShiftFactor(0),
+            : m_slFrequencyShiftFactor(0),
               LowPassFilterFixedPt( ulCornerFreq, ulSamplingPeriod, ulLagCoeffecient, ulAtoDResolutionBits, FIELD_SIDE_NUMBER_OF_POLES)
         {
         }
