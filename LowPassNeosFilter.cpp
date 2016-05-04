@@ -120,13 +120,20 @@ namespace LowPassFilters
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     bool LowPassNeosFilter::ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodUS)
     {
+        if (    !IsCornerFreqWithBounds(ulCornerFreqHZ)
+             || !IsSamplingPeriodWithBounds(ulSamplingPeriodUS)
+           )
+        {
+            return false;
+        }
+
         //
         // HZ represents hertz
         //
         SetCornerFreqHZ(ulCornerFreqHZ);
 
         //
-        // Us represents microseconds
+        // US represents microseconds
         //
         SetSamplingPeriodUS(ulSamplingPeriodUS);
 

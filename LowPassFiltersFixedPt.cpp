@@ -45,14 +45,14 @@ namespace LowPassFilters
         rslFilterOutput = slScaledAtoD;
 
         if (    !IsFilteringEnabled() 
-			 || !ReconfigureWithNewCornerFrequencey(ulCornerFreqToFilter)
+             || !ReconfigureWithNewCornerFrequencey(ulCornerFreqToFilter)
            )
         {
             bSuccess = false;
         }
         else if (    !HasFilterRestarted(rslFilterOutput) 
-			      && !CalcDiffEquation(slScaledAtoD, GetLagCoefficient(), rslFilterOutput)
-			    )
+                  && !CalcDiffEquation(slScaledAtoD, GetLagCoefficient(), rslFilterOutput)
+                )
         {
             RestartFiltering();
 
@@ -70,6 +70,13 @@ namespace LowPassFilters
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     bool LowPassFilterFixedPt::ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplePeriodUS)
     {
+        if (    !IsCornerFreqWithBounds(ulCornerFreqHZ)
+             || !IsSamplingPeriodWithBounds(ulSamplePeriodUS)
+           )
+        {
+            return false;
+        }
+            
         SetCornerFreqHZ(ulCornerFreqHZ);
 
         SetSamplingPeriodUS(ulSamplePeriodUS);
@@ -111,7 +118,7 @@ namespace LowPassFilters
         {
             m_slPole[ul] = slInitialFilterOutput;
         }
-	}                                                                         
+    }                                                                         
 
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -202,12 +209,12 @@ namespace LowPassFilters
         //
         // multiplicand integer part * multiplier integer part
         //
-		//   Scaled Fixed Point Number with 16 bits of fractional precsion
-		//
-		//   Bit
-		//   31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 09 08 07 06 05 04 03 02 01 00
-		//   ----------------Integer Part-------------------|------------Fractional Part--------------------
-		//
+        //   Scaled Fixed Point Number with 16 bits of fractional precsion
+        //
+        //   Bit
+        //   31 30 29 28 27 26 25 24 23 22 21 20 19 18 17 16 15 14 13 12 11 10 09 08 07 06 05 04 03 02 01 00
+        //   ----------------Integer Part-------------------|------------Fractional Part--------------------
+        //
         //   Shift multiplier integer part right so LSB is at bit 0.  Save in mltplrIntPartShftd.
         //   Shift multiplicand integer part right so LSB is at bit 0. Save in mltplcndIntPartShftd.
         //   Mask off integer part of multiplier and save in mlplrFracPart;
@@ -273,17 +280,17 @@ namespace LowPassFilters
 
         return (slProductOfIntParts + slProductOfIntAndFracParts + slProductOfFractionalParts);
    }
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/// FUNCTION NAME: LowPassFilterFixedPt::IsFilterResultValid
-	///
-	/// Determine validity of low pass filter output
-	///
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	bool LowPassFilterFixedPt::IsFilterOutputValid(int32_t slDiffEqTerm1, int32_t slDiffEqTerm2, int32_t slFilterOuput)
-	{
-		bool bFilterOutputValid = !IsThereOverflowFromAddSbtrct(slDiffEqTerm1, slDiffEqTerm2, slFilterOuput);
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    /// FUNCTION NAME: LowPassFilterFixedPt::IsFilterResultValid
+    ///
+    /// Determine validity of low pass filter output
+    ///
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    bool LowPassFilterFixedPt::IsFilterOutputValid(int32_t slDiffEqTerm1, int32_t slDiffEqTerm2, int32_t slFilterOuput)
+    {
+        bool bFilterOutputValid = !IsThereOverflowFromAddSbtrct(slDiffEqTerm1, slDiffEqTerm2, slFilterOuput);
 
-		return bFilterOutputValid;
-	}
+        return bFilterOutputValid;
+    }
 };
 

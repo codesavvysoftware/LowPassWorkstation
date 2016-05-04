@@ -59,12 +59,21 @@ namespace LowPassFilters
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         LowPass(uint32_t       ulCornerFreqHZ,
                 uint32_t       ulSamplingPeriodUS,
-                NumericFormat  LagCoefficient)
+                NumericFormat  LagCoefficient,
+                uint32_t       ulCornerFreqUpperBoundHZ = DEFAULT_CORNER_FREQ_UPPER_BOUND_HZ,
+                uint32_t       ulCornerFreqLowerBoundHZ = DEFAULT_CORNER_FREQ_LOWER_BOUND_HZ,
+                uint32_t       ulSamplingPeriodUpperBoundUS = DEFAULT_SAMPLE_PERIOD_UPPER_BOUND_US,
+                uint32_t       ulSamplingPeriodLowerBoundUS = DEFAULT_SAMPLE_PERIOD_LOWER_BOUND_US )
             : m_ulCornerFreqHZ(ulCornerFreqHZ),
               m_ulSamplePeriodUS(ulSamplingPeriodUS),
               m_LagCoefficient(LagCoefficient),
               m_bFilteringEnabled(false),
-              m_bFirstSample(true)
+              m_bFirstSample(true),
+              m_bFilterConfigurationValid(false),
+              m_ulCornerFreqUpperBnd(ulCornerFreqUpperBoundHZ),
+              m_ulCornerFreqLowerBnd(ulCornerFreqLowerBoundHZ),
+              m_ulSamplingPeriodUpperBnd(ulSamplingPeriodUpperBoundUS),
+              m_ulSamplingPeriodLowerBnd(ulCornerFreqLowerBoundHZ)
         {
         }
 
@@ -168,6 +177,22 @@ namespace LowPassFilters
         /// @return true when filtering is enabled, false when disabled
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         inline bool IsFilteringEnabled() { return m_bFilteringEnabled; }
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// FUNCTION NAME: LowPass::IsFilterConfigured()
+        ///
+        /// Query filtering enabled status
+        ///
+        /// @par Full Description
+        /// Query filtering enabled status to determine if filtering has valid configuration of sample period and corner
+        /// frequency.
+        ///
+        /// @pre    none.
+        /// @post   none.
+        /// 
+        /// @return true when filtering is enabled, false when disabled
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        inline bool IsFilterConfigured() { return m_bFilterConfigurationValid; }
 
 
     protected:
@@ -298,6 +323,12 @@ namespace LowPassFilters
             return bConfigureSuccess;
         }
 
+        inline bool IsCornerFreqWithBounds(uint32_t ulCornerFreqHZ)
+        { return ((ulCornerFreqHZ <= m_ulCornerFreqUpperBnd) && (ulCornerFreqHZ >= m_ulCornerFreqLowerBnd)); }
+
+        inline bool IsSamplingPeriodWithBounds(uint32_t ulSamplingPeriodUS)
+        { return ((ulSamplingPeriodUS <= m_ulSamplingPeriodUpperBnd) && (ulSamplingPeriodUS >= m_ulSamplingPeriodLowerBnd)); }
+
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPass::GetCornerFreq
         ///
@@ -328,7 +359,7 @@ namespace LowPassFilters
         /// @return  The sample period in microseconds the filter is configured for
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         inline uint32_t GetSamplePeriodUS() 
-		{ return m_ulSamplePeriodUS; }
+        { return m_ulSamplePeriodUS; }
 
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -345,7 +376,7 @@ namespace LowPassFilters
         /// @return  The lag coefficient the filter is configured for
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         inline NumericFormat GetLagCoefficient() 
-		{ return m_LagCoefficient; }
+        { return m_LagCoefficient; }
 
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -362,7 +393,7 @@ namespace LowPassFilters
         /// @return  None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         inline void RestartFiltering() 
-		{ m_bFirstSample = false; }
+        { m_bFirstSample = false; }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPass::SetCornerFreq
@@ -380,7 +411,7 @@ namespace LowPassFilters
         /// @return  None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         inline void SetCornerFreqHZ(uint32_t ulCornerFreqHZ) 
-		{ m_ulCornerFreqHZ = ulCornerFreqHZ; }
+        { m_ulCornerFreqHZ = ulCornerFreqHZ; }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPass::SetLagCoefficient
@@ -398,7 +429,7 @@ namespace LowPassFilters
         /// @return  The lag coefficient the filter is configured for
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         inline void SetLagCoefficient(NumericFormat LagCoefficient) 
-		{ m_LagCoefficient = LagCoefficient; }
+        { m_LagCoefficient = LagCoefficient; }
 
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -417,13 +448,25 @@ namespace LowPassFilters
         /// @return  None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         inline void SetSamplingPeriodUS(uint32_t ulSamplingPeriodUS) 
-		{ m_ulSamplePeriodUS = ulSamplingPeriodUS; }
+        { m_ulSamplePeriodUS = ulSamplingPeriodUS; }
 
     private:
         //**************************************************************************************************************
         // Private methods and attributes
         //**************************************************************************************************************
     
+        // Default max value for corner freq in herz
+        static const uint32_t   DEFAULT_CORNER_FREQ_UPPER_BOUND_HZ = 500;
+        
+        // Default min value for corner freq in herz
+        static const uint32_t   DEFAULT_CORNER_FREQ_LOWER_BOUND_HZ = 1;
+        
+        // Default max value for sample period in microseconds
+        static const uint32_t   DEFAULT_SAMPLE_PERIOD_UPPER_BOUND_US = 1000;
+        
+        // Default min value for sample period in microseconds
+        static const uint32_t   DEFAULT_SAMPLE_PERIOD_LOWER_BOUND_US = 10;
+
         // true when applying difference equation to filter is active
         bool           m_bFilteringEnabled;
 
@@ -436,8 +479,25 @@ namespace LowPassFilters
         // lag coefficient for the filter
         NumericFormat  m_LagCoefficient;
 
+        // true when the first sample for a restarted has been read
         bool           m_bFirstSample;
 
+        // true when the filter is configured with a valid sample period and corner frequency
+        bool           m_bFilterConfigurationValid;
+
+        // Max value for corner freq that filter can be configured with
+        uint32_t       m_ulCornerFreqUpperBnd;
+
+        // Min value for corner freq that filter can be configured with
+        uint32_t       m_ulCornerFreqLowerBnd;
+            
+        // Max value for sampling rate that filter can be configured with
+        uint32_t       m_ulSamplingPeriodUpperBnd;
+
+        // Min value for sampling rate that filter can be configured with
+        uint32_t       m_ulSamplingPeriodLowerBnd;
+
+        
         // inhibit default constructor, copy constructor, and assignment
         LowPass();
 
