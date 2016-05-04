@@ -40,7 +40,7 @@ namespace LowPassFilters
 
         rslFilterOutput = slScaledAtoD;
             
-        bool bFilteringIsNotEnabled = !IsFilteringEnabled();
+        bool bFilteringIsNotEnabled = !IsFilteringReadyToStart();
 
         if (bFilteringIsNotEnabled)
         {
@@ -187,6 +187,8 @@ namespace LowPassFilters
         if (bFilterConfigured)
         {
             SetCornerFreqHZ(ulCornerFreqHZ);
+
+            SetFilteringConfigured();
         }
 
         return bFilterConfigured;

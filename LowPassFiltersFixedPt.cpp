@@ -44,7 +44,7 @@ namespace LowPassFilters
         
         rslFilterOutput = slScaledAtoD;
 
-        if (    !IsFilteringEnabled() 
+        if (    !IsFilteringReadyToStart() 
              || !ReconfigureWithNewCornerFrequencey(ulCornerFreqToFilter)
            )
         {
@@ -95,6 +95,8 @@ namespace LowPassFilters
         ullAccum >>= (m_ulIntNumBitsInInt + (m_ulIntNumBitsInInt - m_ulNumberOfFrcntlBits));
 
         SetLagCoefficient(static_cast<uint32_t>(ullAccum));
+
+        SetFilteringConfigured();
 
         return true;
     }

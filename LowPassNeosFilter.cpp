@@ -43,7 +43,7 @@ namespace LowPassFilters
         bool bSuccess = true;
 
         if ( 
-                !IsFilteringEnabled() 
+                !IsFilteringReadyToStart() 
              || !ReconfigureWithNewCornerFrequencey(ulCornerFreqToFilterHz)
            )
         {
@@ -174,6 +174,8 @@ namespace LowPassFilters
         float fLagCoefficient = fLagConstCornerFreqSamplingPeriodProduct / (TWO_PT_ZERO + fLagConstCornerFreqSamplingPeriodProduct);
 
         SetLagCoefficient(fLagCoefficient);
+
+        SetFilteringConfigured();
 
         return true;
     }

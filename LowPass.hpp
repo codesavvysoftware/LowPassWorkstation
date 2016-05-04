@@ -68,6 +68,7 @@ namespace LowPassFilters
               m_ulSamplePeriodUS(ulSamplingPeriodUS),
               m_LagCoefficient(LagCoefficient),
               m_bFilteringEnabled(false),
+              m_bValidConfigurationActive(false),
               m_bFirstSample(true),
               m_bFilterConfigurationValid(false),
               m_ulCornerFreqUpperBnd(ulCornerFreqUpperBoundHZ),
@@ -176,24 +177,7 @@ namespace LowPassFilters
         /// 
         /// @return true when filtering is enabled, false when disabled
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        inline bool IsFilteringEnabled() { return m_bFilteringEnabled; }
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// FUNCTION NAME: LowPass::IsFilterConfigured()
-        ///
-        /// Query filtering enabled status
-        ///
-        /// @par Full Description
-        /// Query filtering enabled status to determine if filtering has valid configuration of sample period and corner
-        /// frequency.
-        ///
-        /// @pre    none.
-        /// @post   none.
-        /// 
-        /// @return true when filtering is enabled, false when disabled
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        inline bool IsFilterConfigured() { return m_bFilterConfigurationValid; }
-
+        inline bool IsFilteringReadyToStart() { return ( m_bFilteringEnabled && m_bValidConfigurationActive); }
 
     protected:
 
@@ -323,12 +307,62 @@ namespace LowPassFilters
             return bConfigureSuccess;
         }
 
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// FUNCTION NAME: LowPass::IsCornerFreqWithBounds()
+        ///
+        /// Query if conrner frequency is within bounds
+        ///
+        /// @par Full Description
+        /// Query if conrner frequency is within the upper and lower bounds of its valid values
+        /// frequency.
+        ///
+        /// @pre    none.
+        /// @post   none.
+        /// 
+        /// @return true when corner frequency is within valid bounds, false when disabled
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         inline bool IsCornerFreqWithBounds(uint32_t ulCornerFreqHZ)
         { return ((ulCornerFreqHZ <= m_ulCornerFreqUpperBnd) && (ulCornerFreqHZ >= m_ulCornerFreqLowerBnd)); }
 
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// FUNCTION NAME: LowPass::IsSamplingPeriodWithBounds()
+        ///
+        /// Query if sampling period is within bounds
+        ///
+        /// @par Full Description
+        /// Query if sampling period is within the upper and lower bounds of its valid values
+        /// frequency.
+        ///
+        /// @pre    none.
+        /// @post   none.
+        /// 
+        /// @return true when sampling period is within valid bounds, false when disabled
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         inline bool IsSamplingPeriodWithBounds(uint32_t ulSamplingPeriodUS)
         { return ((ulSamplingPeriodUS <= m_ulSamplingPeriodUpperBnd) && (ulSamplingPeriodUS >= m_ulSamplingPeriodLowerBnd)); }
 
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// FUNCTION NAME: LowPass::IsFilterConfigured()
+        ///
+        /// Query filtering enabled status
+        ///
+        /// @par Full Description
+        /// Query filtering enabled status to determine if filtering has valid configuration of sample period and corner
+        /// frequency.
+        ///
+        /// @pre    none.
+        /// @post   none.
+        /// 
+        /// @return true when filtering is enabled, false when disabled
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        inline bool IsFilterConfigured() 
+        { return m_bFilterConfigurationValid; }
+
+        inline void SetFilteringConfigured()
+        {	m_bFilterConfigurationValid = true;	}
+            ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        inline void ResetFilteringConfigured()
+        { m_bFilterConfigurationValid = false; }
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPass::GetCornerFreq
         ///
@@ -469,6 +503,9 @@ namespace LowPassFilters
 
         // true when applying difference equation to filter is active
         bool           m_bFilteringEnabled;
+
+        // true when filter is configured with valid corner freq and sample period
+        bool           m_bValidConfigurationActive;
 
         // corner frequency for the filter
         uint32_t       m_ulCornerFreqHZ;
