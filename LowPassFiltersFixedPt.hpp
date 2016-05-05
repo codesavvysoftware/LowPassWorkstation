@@ -69,12 +69,8 @@ namespace LowPassFilters
                              uint32_t ulLagCoeffecient,
                              uint32_t ulAtoDResolutionBits,
                              uint32_t ulNumberOfPoles = DEFAULT_NUMBER_OF_POLES)
-            : m_ulAtoDResolutionBits(ulAtoDResolutionBits),
-              m_ulNumberOfFrcntlBits((sizeof(int) * CHAR_BIT) - ulAtoDResolutionBits - 1),
-			  m_ulIntNumBitsInInt(NUMBER_OF_BITS_IN_SIGNED_LONG_VALS),
-			  m_ulRoundOffValue(1 << ((sizeof(int) * CHAR_BIT) - ulAtoDResolutionBits - 2)),
-              m_ulScaledIntegerLSBBitPos((sizeof(int) * CHAR_BIT) - ulAtoDResolutionBits - 1),
-              m_ulIntMSBSet(MOST_SIGNIFICANT_BIT_OF_UINT_VALS),
+            : m_ulNumberOfFrcntlBits(NUMBER_OF_BITS_IN_SIGNED_LONG_VALS - ulAtoDResolutionBits - 1),
+              m_ulConfigFilterValForMovingFracBitsToFixedPtNumber(NUMBER_OF_BITS_IN_SIGNED_LONG_VALS + ulAtoDResolutionBits + 1),
               m_ulNumberOfPoles(ulNumberOfPoles),
               LowPass<int32_t>(ulCornerFreqHZ, ulSamplingPeriodUS, ulLagCoeffecient)
         {
@@ -219,138 +215,25 @@ namespace LowPassFilters
 
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// FUNCTION NAME: LowPassFilterFixedPt::RetrieveIntegerPartOfScaleddNmbrWithFixedBinaryPt
-        ///
-        /// Retrieve the integer part of a scaled number with a fixed binary point
-		///
-        /// @par Full Description
-        /// Retrieve the integer part of a scaled number which is the number that is left of the binary point
-        ///
-        /// @pre    object created.
-        /// @post   none.
-        ///
-        /// @param  slScaledNumber    Scaled integer value
-        /// @param  ulBinaryPtBitPos  Bit position of the binary point
-        ///
-        /// @return  Integer part to the left of the binary shifted to bit 0.
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        inline int32_t  RetrieveIntegerPartOfScaleddNmbrWithFixedBinaryPt(int32_t  slScaledNumber, uint32_t ulBinaryPtBitPos) 
-        { return (slScaledNumber >> ulBinaryPtBitPos); }
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// FUNCTION NAME: LowPassFilterFixedPt::RetrieveFractionalPartOfScaleddNmbrWithFixedBinaryPt
-        ///
-        /// Retrieve the fractional part of a scaled number which is the number that is right of the binary point
-        ///
-        /// @par Full Description
-        /// Retrieve the fractional part of a scaled number which is the number that is right of the binary point
-        ///
-        /// @pre    object created.
-        /// @post   none.
-        ///
-        /// @param  slScaledNumber    Scaled integer value
-        /// @param  ulScalefactor     Scale factor (number of fractional bits)
-        ///
-        /// @return  fractional part to the right of the binary point
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        inline int32_t  RetrieveFractionalPartOfScaleddNmbrWithFixedBinaryPt(int32_t  slScaledNumber, uint32_t ulScaleFactor) 
-        { return (((1 << ulScaleFactor) - 1) & slScaledNumber); }
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// FUNCTION NAME: LowPassFilterFixedPt::ComputeProductOfFracttionalParts
-        ///
-        /// Compute the product of the fractional parts of a scaled number 
-        ///
-        /// @par Full Description
-        /// Take product of fractional parts that are to the right of the binary point in a scaled fixed point number.
-        ///
-        /// @pre    object created.
-        /// @post   none.
-        ///
-        /// @param  ulFracPart1       Fractional part of the multiplicand
-        /// @param  ulFractPart2      Fractional part of the multiplier
-        /// @param  ulBinaryPtBitPos  Bit position of the binary point
-        ///
-        /// @return  product of fractional parts to the right of the binary point
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        inline int32_t ComputeProductOfFracParts(uint32_t ulFracPrt1, uint32_t ulFracPrt2, uint32_t ulBinaryPtBitPos)
-        { return (static_cast<int32_t>(((!ulFracPrt1 || !ulFracPrt2) ? 0 : (((ulFracPrt1 * ulFracPrt2) + (1 << ulBinaryPtBitPos)) >> ulBinaryPtBitPos)))); }
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// FUNCTION NAME: LowPassFilterFixedPt::ComputeProductOfIntPartAndFracPart
-        ///
-        /// Compute product of fractional parts and integer parts 
-        ///
-        /// @par Full Description
-        /// Compute product of fractional parts and integer parts of different scaled fixed point numbers
-        ///
-        /// @pre    object created.
-        /// @post   none.
-        ///
-        /// @param  slIntPart         Integer part 
-        /// @param  ulFractPart       Fractional part 
-        ///
-        /// @return  product of integer and fractional parts
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        inline int32_t ComputeProductOfIntegerPartAndFractionalPart(int32_t slIntPart, uint32_t ulFracPart)
-        { return (((!slIntPart || !ulFracPart) ? 0 : static_cast<int32_t>(slIntPart * ulFracPart))); }
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// FUNCTION NAME: LowPassFilterFixedPt::ComputeProductOfIntegerParts
-        ///
-        /// Compute the product of the integer parts of a scaled number 
-        ///
-        /// @par Full Description
-        /// Compute product of integer parts that are to the left of the binary point in a scaled fixed point number.
-        ///
-        /// @pre    object created.
-        /// @post   none.
-        ///
-        /// @param  slIntPart1      Integer part 1
-        /// @param  slIntPart2      Integer part 2 
-        ///
-        /// @return  product of integer and fractional parts
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        inline int32_t ComputeProductOfIntegerParts(int32_t slIntPart1, int32_t slIntPart2, uint32_t ulBinaryPtBitPos)
-        { return (((!slIntPart1 || !slIntPart2) ? 0 : ((slIntPart1 * slIntPart2) << ulBinaryPtBitPos))); }
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPassFilterFixedPt::ScaledMultiply
         ///
-        /// Multiply scaled ints (ints with a binary point).
+        /// Multiply two fixed point ints with a fractional part at a binary point.
         ///
         /// @par Full Description
-        /// Product of two scaled integers 
+        /// Product of two ixed point ints with a fractional part at a binary point 
         ///
         /// @pre    object created.
-        /// @post   Product of two scaled numbers with a fixed binary point computed.
+        /// @post   Product of fixed point ints with a fractional part at a binary point.
         ///
-        /// @param slMultiplcand scaled int with binary point at scaleFactor - 1
-        /// @param slMultiplier  scaled int with binary point at scaleFactor - 1
-        /// @param ulScaleFactor bit positon of LSB of int part, one to the left of the binary point
+        /// @param slMultiplcand             fixed point int with a fractional part at a binary point
+        /// @param slMultiplier              fixed point int with a fractional part at a binary point
+        /// @param ulNumberOfFractionalBits  bit positon of LSB of int part, one to the left of the binary point
         ///
         /// @return  Product of multiplier * multiplicand
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        int32_t ScaledMultiply(int32_t slMultiplicand, int32_t slMultiplier, uint32_t ulScaleFactor);
+        int32_t ScaledMultiply(int32_t slMultiplicand, int32_t slMultiplier, uint32_t ulNumberOfFractionalBits);
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// FUNCTION NAME: LowPassFilterFixedPt::GetNumberOfADCResolutionBits
-        ///
-        /// Get the resolution in bits of the ADC inputs
-        ///
-        /// @par Full Description
-        /// Get the resolution in bits of the ADC inputs
-        ///
-        /// @pre    object created.
-        /// @post   none.
-        ///
-        /// @param none
-        ///
-        /// @return  Number of ADC resolution bits
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        inline uint32_t GetNumberOfADCResolutionBits() { return m_ulAtoDResolutionBits; }
-
-		////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+ 		////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		/// FUNCTION NAME: LowPassFilterFixedPt::GetNumberOfFractionalBits
 		///
 		/// Get the number of fractional bits for scaled fixed point integers 
@@ -395,7 +278,7 @@ namespace LowPassFilters
         static const uint32_t  MAX_NUMBER_OF_POLES = 4;
         
         // Approx of Pi * .000001 with 32 bits of fractional precision
-        static const uint32_t  PI_OMEGA          = 13493;
+        static const uint32_t  LAG_CONSTANT = 13493;
 
         // For rounding off 64 bit fractional value;
         static const uint64_t  ROUND_OFF_FRAC_64 = 0x800000000000;
@@ -419,29 +302,16 @@ namespace LowPassFilters
         
         // Bit position of most significant bit in unsigned int vals.
         const static uint32_t MOST_SIGNIFICANT_BIT_OF_UINT_VALS = static_cast<uint32_t>(INT_MAX) + 1;
-            
+
         // Number of bits in an int value
         const static uint32_t NUMBER_OF_BITS_IN_SIGNED_LONG_VALS = sizeof(int) * CHAR_BIT;
-
-        // Number of ADC resolution bits
-        uint32_t m_ulAtoDResolutionBits;
 
         // Number of fractionas bits in the scaled integers.  
         // Places to the right of the binary point.
         uint32_t m_ulNumberOfFrcntlBits;
 
-        // For rounding to least significant bit of scaled data
-        uint32_t m_ulRoundOffValue;
-
-        // Bit position of LSB of whole number part of scaled number
-        uint32_t m_ulScaledIntegerLSBBitPos;
-
-        // Most significant bit for ints is a one, all others are zero
-        uint32_t m_ulIntMSBSet;
-
-		// Number of bits in an integer 
-		uint32_t m_ulIntNumBitsInInt;
-
+        // Used for shifting the lag coefficient calculated as in ConfigFilter to the correct bit position.
+        uint32_t m_ulConfigFilterValForMovingFracBitsToFixedPtNumber;
 		// inhibit default constructor, copy constructor, and assignment
         LowPassFilterFixedPt();
 

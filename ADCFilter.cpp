@@ -68,7 +68,7 @@ namespace LowPassFilters
         for (int32_t sl = 0;
 		        (sizeof(m_slPole) > 0)
              && (sl < sizeof(m_slPole) / sizeof(uint32_t))
-             && (sl < m_ulNumberOfPoles);
+             && (sl < static_cast<int32_t>(m_ulNumberOfPoles));
              sl++)
         {
             //
