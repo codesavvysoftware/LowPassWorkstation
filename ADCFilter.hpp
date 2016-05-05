@@ -44,8 +44,8 @@ namespace LowPassFilters
         /// @pre    None
         /// @post   ADC Filter object instantiated for use in I/O connections.
         /// 
-        /// @param  uiCornerFreqHZ         Initial corner frequency in herz
-        /// @param  uiSamplingPeriodUS     Sampling period for the filter in microseconds
+        /// @param  ulCornerFreqHZ         Initial corner frequency in herz
+        /// @param  ulSamplingPeriodUS     Sampling period for the filter in microseconds
         /// @param  LagCoefficient         InitialLagCoefficient
         /// @param  AtoDResolutionBits     Bit resolution of ADC channels
         /// 
@@ -92,7 +92,7 @@ namespace LowPassFilters
         /// @param  ulCornerFreqToFilterHZ    Corner Frequency for the filter in herz.
         /// @param  rslFilterOutput           Output from filter difference equation
         ///
-        /// @return  true when the filter was applied, false otherwise
+        /// @return  true when the filter was applied, false when the filter is not ready to start 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         bool ApplyFilter(int32_t slAtoDValueRead, uint32_t ulCornerFreqToFilterHZ,  int32_t & rslFilterOutput);
 
@@ -111,7 +111,7 @@ namespace LowPassFilters
         /// @param  ulCornerFreqHZ         Corner Frequency for the filter in herz
         /// @param  ulSamplingPeriodUS     Sampling period for the filter in microseconds
         ///
-        /// @return  true when the filter was configured, false otherwise
+        /// @return  true when the filter was configured, false when the corner frequency is not 100HZ, 50 HZ, 25HZ 10HZ, 5HZ or 1HZ.
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         bool ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodUS);
 
@@ -125,7 +125,7 @@ namespace LowPassFilters
         static const uint32_t FIELD_SIDE_NUMBER_OF_POLES = 4;
 
         // Bit position where no shift is required for 100 HZ corner frequencies
-        static const uint32_t NO_SHIFT_BIT_POS = 22;
+        static const uint32_t SHIFT_FACTOR_FOR_100_HZ_CORNER_FREQ = 6;
 
         // Enumerated constant for corner frequencies that can be filtered for
         typedef enum
@@ -141,7 +141,7 @@ namespace LowPassFilters
 
         // Shift factor for multiplication by the lag coefficient
         // Determined at object instantiation time or during ADC 
-        // AppplyFilter synchronous calls when the corner freq changes
+        // ApplyFilter synchronous calls when the corner freq changes
         int32_t m_slFrequencyShiftFactor;
 
         // inhibit default constructor, copy constructor, and assignment

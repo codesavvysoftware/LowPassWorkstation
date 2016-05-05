@@ -81,7 +81,7 @@ namespace LowPassFilters
         /// @param  uiCornerFreqHZ         Corner Frequency for the filter in herz
         /// @param  uiSamplingPeriodUS     Sampling period for the filter in microseconds
         ///
-        /// @return  true when the filter was configured, false otherwise
+        /// @return  true always. Used when sample period and corner frequency are compile time constants only.
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         bool ConfigureFilter(uint32_t uiCornerFreqHZ, unsigned uiSamplingPeriodUS)
         {

@@ -3,6 +3,18 @@
 ///
 /// The base class for the low pass filters that use fixed point arithmetic and derived from the template base class.
 ///
+/// LowPass template class is instantiated with type int32_t.  The pure virtual methods needed to implemented with the following signatures
+/// 
+///        virtual bool ApplyFilter(int32_t adcValueRead, uint32_t ulCornerFreqHZ, int32_t & rFilterOutput);
+///        virtual bool ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodHZ);
+///        virtual bool CalcDiffEquation(int32_t   AtoDValue,
+///                                      int32_t   LagCoefficient,
+///                                      int32_t & FilteredValue);
+///        virtual void InitFilterDataForRestart(int32_t InitialFilterOutput);
+///        virtual bool IsFilterOutputValid(int32_t Term1,  int32_t Term2, int32_t Result);
+///
+///
+///
 /// @if REVISION_HISTORY_INCLUDED
 /// @par Edit History
 /// - thaley 03-May-2016 Original implementation
@@ -59,10 +71,10 @@ namespace LowPassFilters
                              uint32_t ulNumberOfPoles = DEFAULT_NUMBER_OF_POLES)
             : m_ulAtoDResolutionBits(ulAtoDResolutionBits),
               m_ulNumberOfFrcntlBits((sizeof(int) * CHAR_BIT) - ulAtoDResolutionBits - 1),
-              m_ulRoundOffValue(1 << ((sizeof(int) * CHAR_BIT) - ulAtoDResolutionBits - 2)),
+			  m_ulIntNumBitsInInt(NUMBER_OF_BITS_IN_SIGNED_LONG_VALS),
+			  m_ulRoundOffValue(1 << ((sizeof(int) * CHAR_BIT) - ulAtoDResolutionBits - 2)),
               m_ulScaledIntegerLSBBitPos((sizeof(int) * CHAR_BIT) - ulAtoDResolutionBits - 1),
               m_ulIntMSBSet(MOST_SIGNIFICANT_BIT_OF_UINT_VALS),
-              m_ulIntNumBitsInInt(NUMBER_OF_BITS_IN_SIGNED_LONG_VALS),
               m_ulNumberOfPoles(ulNumberOfPoles),
               LowPass<int32_t>(ulCornerFreqHZ, ulSamplingPeriodUS, ulLagCoeffecient)
         {
@@ -91,8 +103,20 @@ namespace LowPassFilters
         /// Apply the low pass filter difference equation to unfiltered ADC input data
         ///
         /// @par Full Description
-        /// Virtual method for the applying the low pass filter
-        ///
+        /// Virtual method for the applying the low pass filter. Called synchrously at a periodic rate to compute a
+		///  filtered output.  The output is calculated utilizing the following difference equation:
+		///  y(n) = y(n-1) + Lag Coefficient * ( x(n) - y(n-1) )
+		///  Where:
+		///     y(n)   = the output of the filter
+		///     y(n-1) = previous filter output
+        ///     Lag Coefficient = (Corner Frequency in radians * Sample Period in seconds) / 2 + (Corner Frequency in radians * Sample Period in seconds)
+		///     x(n) = current ADC value read.
+		///  Regarding the lag coefficient
+		///
+		///    LagCoefficient is derived from taking the following first order low pass filter S transform:
+        ///       1/(RCTimeConstant * s) and using the Tustin approximation for z which is
+		///       s = (2/SamplingPeriod) * ((z-1)/(z+1))
+		///
         /// @pre    object created.
         /// @post   filter applied to input A to D value when filter is enabled.
         ///
@@ -100,7 +124,18 @@ namespace LowPassFilters
         /// @param  ulCornerFreqHZ     Corner Frequency for the filter in herz
         /// @param  rslFilterOutput    Output from filter difference equation
         ///
-        /// @return  true when the filter was applied, false otherwise
+        /// @return  true when the filter was applied, 
+		///          false when the difference equation can't be applied.  Occurs when filter yields an invalid value,
+		///          the filter can produce an invalid value when addition of terms in the difference equation results
+		///          in an overflow. A return of false is also returned when the filter isnt' ready to start.  The filter
+		///          isn't ready to start when the filter has not been configured with a corner frequency in herz that is in
+		///          the acceptable range.  The acceptable range of corner frequencies is determined at object instantiation
+		///          time.  Also the filter isn't ready to start when it has not been configured with a sample period in 
+		///          microseconds that is in the acceptable range.  The accepatble range of sample periods is determined at
+		///          object instantiation time.  False is also returned when the filter can't be reconfigured. Calles to 
+		///          ApplyFilter() with a corner frequency that is different than the current corner frequency used will
+		///          result in an attempt to configure the filter with the saved sample period in microseconds and the 
+		///          the input corner frequency in herz.  If the call to configure fails, reconfigure fails. 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         virtual bool ApplyFilter(int32_t slAtoDValueRead, uint32_t ulCornerFreqToFilterHZ, int32_t & rslFilterOutput);
 
@@ -118,7 +153,7 @@ namespace LowPassFilters
         /// @param  uiCornerFreqHZ         Corner Frequency for the filter herz
         /// @param  uiSamplingPeriodUS     Sampling period for the filter in microseconds
         ///
-        /// @return  true when the filter was configured, false otherwise
+        /// @return  true when the filter was configured, false when corner frequency amd sampling period are out of bounds
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         virtual bool ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplePeriodUS);
 
@@ -159,7 +194,7 @@ namespace LowPassFilters
         /// @param  slTerm2           Second term of difference equation add
         /// @param  slResult          Result of difference equation add
         ///
-        /// @return  true when the result is valid, false otherwise
+        /// @return  true when the result is valid, false when applying the filter causes an overflow.
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         bool IsFilterOutputValid(int32_t slDiffEqTerm1, int32_t slDiffEqTerm2, int32_t slFilterOuput);
 
@@ -178,18 +213,18 @@ namespace LowPassFilters
         /// @param  ulTerm2           Second term of binary aritmetic operation of filter being checked.
         /// @param  ulResult          Result of binary arithmetic operation of filter being checked
         ///
-        /// @return  true when overflow occurred in the addition/subtraction, false otherwise
+        /// @return  true when overflow occurred in the addition/subtraction, false when overflow occurs
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         bool IsThereOverflowFromAddSbtrct(uint32_t ulTerm1, uint32_t ulTerm2, uint32_t ulResult);
 
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// FUNCTION NAME: LowPassFilterFixedPt::TakeIntegerPartOfScaleddNmbrWithFixedBinaryPt
+        /// FUNCTION NAME: LowPassFilterFixedPt::RetrieveIntegerPartOfScaleddNmbrWithFixedBinaryPt
         ///
-        /// Determine validity of low pass filter output
-        ///
+        /// Retrieve the integer part of a scaled number with a fixed binary point
+		///
         /// @par Full Description
-        /// Take the integer part of a scaled number which is the number that is left of the binary point
+        /// Retrieve the integer part of a scaled number which is the number that is left of the binary point
         ///
         /// @pre    object created.
         /// @post   none.
@@ -199,32 +234,32 @@ namespace LowPassFilters
         ///
         /// @return  Integer part to the left of the binary shifted to bit 0.
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        inline int32_t  TakeIntegerPartOfScaleddNmbrWithFixedBinaryPt(int32_t  slScaledNumber, uint32_t ulBinaryPtBitPos) 
+        inline int32_t  RetrieveIntegerPartOfScaleddNmbrWithFixedBinaryPt(int32_t  slScaledNumber, uint32_t ulBinaryPtBitPos) 
         { return (slScaledNumber >> ulBinaryPtBitPos); }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// FUNCTION NAME: LowPassFilterFixedPt::TakeFractionalPartOfScaleddNmbrWithFixedBinaryPt
+        /// FUNCTION NAME: LowPassFilterFixedPt::RetrieveFractionalPartOfScaleddNmbrWithFixedBinaryPt
         ///
-        /// Take the fractional part of a scaled number which is the number that is right of the binary point
+        /// Retrieve the fractional part of a scaled number which is the number that is right of the binary point
         ///
         /// @par Full Description
-        /// Take the fractional part of a scaled number which is the number that is left of the binary point
+        /// Retrieve the fractional part of a scaled number which is the number that is right of the binary point
         ///
         /// @pre    object created.
         /// @post   none.
         ///
         /// @param  slScaledNumber    Scaled integer value
-        /// @param  ulBinaryPtBitPos  Bit position of the binary point
+        /// @param  ulScalefactor     Scale factor (number of fractional bits)
         ///
-        /// @return  fractional part to the right of the binary where least significant bit is 2**(-16).
+        /// @return  fractional part to the right of the binary point
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        inline int32_t  TakeFractionalPartOfScaleddNmbrWithFixedBinaryPt(int32_t  slScaledNumber, uint32_t ulBinaryPtBitPos) 
-        { return (((1 << ulBinaryPtBitPos) - 1) & slScaledNumber); }
+        inline int32_t  RetrieveFractionalPartOfScaleddNmbrWithFixedBinaryPt(int32_t  slScaledNumber, uint32_t ulScaleFactor) 
+        { return (((1 << ulScaleFactor) - 1) & slScaledNumber); }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// FUNCTION NAME: LowPassFilterFixedPt::TakeProductOfFractParts
+        /// FUNCTION NAME: LowPassFilterFixedPt::ComputeProductOfFracttionalParts
         ///
-        /// Take the product of the fractional parts of a scaled number 
+        /// Compute the product of the fractional parts of a scaled number 
         ///
         /// @par Full Description
         /// Take product of fractional parts that are to the right of the binary point in a scaled fixed point number.
@@ -236,18 +271,18 @@ namespace LowPassFilters
         /// @param  ulFractPart2      Fractional part of the multiplier
         /// @param  ulBinaryPtBitPos  Bit position of the binary point
         ///
-        /// @return  product of fractional parts to the right of the binary where least significant bit is 2**(-16
+        /// @return  product of fractional parts to the right of the binary point
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        inline int32_t TakeProductOfFracParts(uint32_t ulFracPrt1, uint32_t ulFracPrt2, uint32_t ulBinaryPtBitPos)
+        inline int32_t ComputeProductOfFracParts(uint32_t ulFracPrt1, uint32_t ulFracPrt2, uint32_t ulBinaryPtBitPos)
         { return (static_cast<int32_t>(((!ulFracPrt1 || !ulFracPrt2) ? 0 : (((ulFracPrt1 * ulFracPrt2) + (1 << ulBinaryPtBitPos)) >> ulBinaryPtBitPos)))); }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// FUNCTION NAME: LowPassFilterFixedPt::TakeProductOfIntPartAndFracPart
+        /// FUNCTION NAME: LowPassFilterFixedPt::ComputeProductOfIntPartAndFracPart
         ///
-        /// Take product of fractional parts and integer parts 
+        /// Compute product of fractional parts and integer parts 
         ///
         /// @par Full Description
-        /// Take product of fractional parts and integer parts of different scaled fixed point numbers
+        /// Compute product of fractional parts and integer parts of different scaled fixed point numbers
         ///
         /// @pre    object created.
         /// @post   none.
@@ -255,18 +290,18 @@ namespace LowPassFilters
         /// @param  slIntPart         Integer part 
         /// @param  ulFractPart       Fractional part 
         ///
-        /// @return  product of int and frac parts least significant bit is 2 **(-16)
+        /// @return  product of integer and fractional parts
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        inline int32_t TakeProductOfIntPartAndFracPart(int32_t slIntPart, uint32_t ulFracPart)
+        inline int32_t ComputeProductOfIntegerPartAndFractionalPart(int32_t slIntPart, uint32_t ulFracPart)
         { return (((!slIntPart || !ulFracPart) ? 0 : static_cast<int32_t>(slIntPart * ulFracPart))); }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// FUNCTION NAME: LowPassFilterFixedPt::TakeProductOfIntParts
+        /// FUNCTION NAME: LowPassFilterFixedPt::ComputeProductOfIntegerParts
         ///
-        /// Take the product of the integer parts of a scaled number 
+        /// Compute the product of the integer parts of a scaled number 
         ///
         /// @par Full Description
-        /// Take product of integer parts that are to the left of the binary point in a scaled fixed point number.
+        /// Compute product of integer parts that are to the left of the binary point in a scaled fixed point number.
         ///
         /// @pre    object created.
         /// @post   none.
@@ -274,9 +309,9 @@ namespace LowPassFilters
         /// @param  slIntPart1      Integer part 1
         /// @param  slIntPart2      Integer part 2 
         ///
-        /// @return  product of int and frac parts least significant bit is 2 **(-16)
+        /// @return  product of integer and fractional parts
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        inline int32_t TakeProductOfIntParts(int32_t slIntPart1, int32_t slIntPart2, uint32_t ulBinaryPtBitPos)
+        inline int32_t ComputeProductOfIntegerParts(int32_t slIntPart1, int32_t slIntPart2, uint32_t ulBinaryPtBitPos)
         { return (((!slIntPart1 || !slIntPart2) ? 0 : ((slIntPart1 * slIntPart2) << ulBinaryPtBitPos))); }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -296,7 +331,7 @@ namespace LowPassFilters
         ///
         /// @return  Product of multiplier * multiplicand
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        int32_t ScaledMultiply(int32_t slMultiplicand, int32_t slMultiplier, uint32_t ulScaleFactor = 16);
+        int32_t ScaledMultiply(int32_t slMultiplicand, int32_t slMultiplier, uint32_t ulScaleFactor);
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPassFilterFixedPt::GetNumberOfADCResolutionBits
@@ -315,24 +350,23 @@ namespace LowPassFilters
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         inline uint32_t GetNumberOfADCResolutionBits() { return m_ulAtoDResolutionBits; }
 
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// FUNCTION NAME: LowPassFilterFixedPt::GetNumberOfBitsInInt
-        ///
-        /// Get the number of bits in an int
-        ///
-        /// @par Full Description
-        /// Get the number of bits in an int
-        ///
-        /// @pre    object created.
-        /// @post   none.
-        ///
-        /// @param none
-        ///
-        /// @return  Number of bits in an int.
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        inline uint32_t GetNumberOfBitsInInt() { return m_ulIntNumBitsInInt; }
-
+		////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		/// FUNCTION NAME: LowPassFilterFixedPt::GetNumberOfFractionalBits
+		///
+		/// Get the number of fractional bits for scaled fixed point integers 
+		///
+		/// @par Full Description
+		/// Get the number of fractional bits for scaled fixed point integers which is derived from the ADC resolution
+		///
+		/// @pre    object created.
+		/// @post   none.
+		///
+		/// @param none
+		///
+		/// @return  Number fractional bits
+		////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		inline uint32_t GetNumberOfFractionalBits() { return (m_ulNumberOfFrcntlBits); }
+ 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPassFilterFixedPt::CalcDiffEquation
         ///
@@ -352,7 +386,7 @@ namespace LowPassFilters
         /// @param  slLagCoefficient       Coefficient of the lag term.
         /// @param  rslFilteredValue       Value of raw ADC data filtered
         ///
-        /// @return  true when calculation occurred without error, false otherwise
+        /// @return  true when calculation occurred without error, false when the difference equation yields an invalid value
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         virtual bool CalcDiffEquation(int32_t   slScaledAtoD,
                                       int32_t   slLagCoefficient,
@@ -405,10 +439,10 @@ namespace LowPassFilters
         // Most significant bit for ints is a one, all others are zero
         uint32_t m_ulIntMSBSet;
 
-        // Number of bits in an integer 
-        uint32_t m_ulIntNumBitsInInt;
+		// Number of bits in an integer 
+		uint32_t m_ulIntNumBitsInInt;
 
-        // inhibit default constructor, copy constructor, and assignment
+		// inhibit default constructor, copy constructor, and assignment
         LowPassFilterFixedPt();
 
         LowPassFilterFixedPt(LowPassFilterFixedPt &);

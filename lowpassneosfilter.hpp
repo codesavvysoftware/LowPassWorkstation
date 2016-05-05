@@ -3,6 +3,16 @@
 ///
 /// The base class for the low pass filters that use floating point arithmetic and derived from the template base class.
 ///
+/// LowPass template class is instantiated with type float.  The pure virtual methods needed to implemented with the following signatures
+/// 
+///        virtual bool ApplyFilter(float adcValueRead, uint32_t ulCornerFreqHZ, float & rFilterOutput);
+///        virtual bool ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodHZ);
+///        virtual bool CalcDiffEquation(float   AtoDValue,
+///                                      float   LagCoefficient,
+///                                      float & FilteredValue);
+///        virtual void InitFilterDataForRestart(float InitialFilterOutput);
+///        virtual bool IsFilterOutputValid(float Term1,  float Term2, float Result);
+/// 
 /// @if REVISION_HISTORY_INCLUDED
 /// @par Edit History
 /// - thaley 03-May-2016 Original implementation
@@ -97,7 +107,7 @@ namespace LowPassFilters
         /// @param  ulCornerFreqToFilterHZ     Corner Frequency for the filter in herz.
         /// @param  rfFilterOutput             Output from filter difference equation
         ///
-        /// @return  true when the filter was applied, false otherwise
+        /// @return  true when the filter was applied, false when filter isn't ready to start or can't be reconfigured
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         bool ApplyFilter(float        fAtoDValueRead, 
                          uint32_t     ulCornerFreqToFilterHZ, 
@@ -117,7 +127,7 @@ namespace LowPassFilters
         /// @param  ulCornerFreqHZ         Corner Frequency for the filter in Herz
         /// @param  ulSamplingPeriodUS     Sampling period for the filter in microseconds
         ///
-        /// @return  true when the filter was configured, false otherwise
+        /// @return  true when the filter was configured, false when corner frequency or sampling period are not valid
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         bool ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodUS); 
 
@@ -146,7 +156,8 @@ namespace LowPassFilters
         /// @param  fLagCoefficient          Coefficient of the lag term.
         /// @param  rfFilteredValue          Value of raw ADC data filtered
         ///
-        /// @return  true when calculation occurred without error, false otherwise
+        /// @return  true when calculation occurred without error, 
+		///          false when applying filter yields an invalid value or is not ready to start
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         virtual bool CalcDiffEquation(float        fAtoDValueRead,
                                       float        fLagCoefficient,
@@ -184,7 +195,7 @@ namespace LowPassFilters
         /// @param  DiffEqTerm2     Second term of difference equation add
         /// @param  fFilterOutput   Result of difference equation add
         ///
-        /// @return  true when the result is valid, false otherwise
+        /// @return  true when the result is valid, false when one of the terms is an invalid float
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         inline virtual bool IsFilterOutputValid(float fDiffEqTerm1, float fDiffEqTerm2, float fFilterOutput)
         { return (IsFloatValid(fDiffEqTerm1) && IsFloatValid(fDiffEqTerm2) && IsFloatValid(fFilterOutput)); }
@@ -215,7 +226,7 @@ namespace LowPassFilters
         ///
         /// @param  f     Float number to check
         ///
-        /// @return  true when input float val is valid, false otherwise
+        /// @return  true when input float val is valid, false when float is not a number or infinity
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         inline bool IsFloatValid(float f)
         { return (!isnan(f) && !isinf(f)); }

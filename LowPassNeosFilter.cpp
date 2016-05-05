@@ -44,7 +44,7 @@ namespace LowPassFilters
 
         if ( 
                 !IsFilteringReadyToStart() 
-             || !ReconfigureWithNewCornerFrequencey(ulCornerFreqToFilterHz)
+             || !ReconfigureWithNewCornerFrequency(ulCornerFreqToFilterHz)
            )
         {
             bSuccess = false;
@@ -52,6 +52,8 @@ namespace LowPassFilters
         else if (HasFilterRestarted(rfFilterOutput))
         {
             m_fPrevFilteredValue = fAtoDValueRead;
+
+			bSuccess = true;
         }
         else
         {
@@ -76,22 +78,25 @@ namespace LowPassFilters
         // Solve the lag filter equation described above.
         float fFilteredValue = m_fPrevFilteredValue + m_fRemainder + fDiff;
 
-        // Check to make sure the value isn't subnormal and trying to get to 0, if so we want to help it by setting 0
-        // Subnormal check include inf/nan/zero, we don't want that so check those out too
+        // Check to see if the filter yielded a valid floating point number.  A
+		// invalid floating point number is infinity or one when nan() returns true
+
         if (!IsFilterOutputValid(m_fPrevFilteredValue, fDiff, fFilteredValue))
         {
             RestartFiltering();
 
             return false;
         }
+		if (    (fAtoDValueRead == 0.0f)
+			 && (fpclassify(fFilteredValue) == FP_SUBNORMAL)
+			 && (fFilteredValue != 0) 
+	       )
+		{   
+			// filter output is extremely near 0, headed to 0, but not 0.
+			// round to 0   
+			fFilteredValue = 0.0f;
+		}
         
-        if (fAtoDValueRead == 0
-            && fpclassify(fFilteredValue) == FP_SUBNORMAL)
-        {
-            // filter output is extremely near 0, headed to 0, but not 0.
-            // round to 0
-            fFilteredValue = 0.0f;
-        }
         //Check to make sure the diff was useful if not store it in the remainder until it becomes useful
         if (
                  (fFilteredValue == m_fPrevFilteredValue)
@@ -151,7 +156,7 @@ namespace LowPassFilters
         //   (CornerFrequencyInRadiansPerSecond * SamplingPeriodInSeconds ) / (2 + (CornerFrequencyInRadiansPerSecond * SamplingPeriodInSeconds)
         //   LagCoefficient is derived from taking the following first order low pass filter S transform:
         //      1/(RCTimeConstant * s) and using the Tustin approximation for z which is
-        //          z = (2/SamplingPeriod) * ((z-1)/(z+1))
+        //          s = (2/SamplingPeriod) * ((z-1)/(z+1))
         //
         //   The product of the CornerFrequencyInRadiansPerSecond * SamplingPeriodMicroSeconds is unitless
         //      CornerFrequencyInRadiansPerSecond == 2 * PI * CornerFreqHz
