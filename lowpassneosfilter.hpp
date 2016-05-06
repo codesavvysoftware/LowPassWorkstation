@@ -7,7 +7,7 @@
 /// 
 ///        virtual bool ApplyFilter(float adcValueRead, uint32_t ulCornerFreqHZ, float & rFilterOutput);
 ///        virtual bool ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodHZ);
-///        virtual bool CalcDiffEquation(float   AtoDValue,
+///        virtual bool CalcDiffEquation(float   ADCValue,
 ///                                      float   LagCoefficient,
 ///                                      float & FilteredValue);
 ///        virtual void InitFilterDataForRestart(float InitialFilterOutput);
@@ -98,18 +98,42 @@ namespace LowPassFilters
         /// Apply the low pass filter difference equation to unfiltered ADC input data
         ///
         /// @par Full Description
-        /// Virtual method for the applying the low pass filter
+        /// Virtual method for the applying the low pass filter. Called synchronously at a periodic rate to compute a
+        /// filtered output.  The output is calculated utilizing the following difference equation:
+        /// y(n) = y(n-1) + Lag Coefficient * ( x(n) - y(n-1) )
+        /// Where:
+        ///     y(n)   = the output of the filter
+        ///     y(n-1) = previous filter output
+        ///     Lag Coefficient = (Corner Frequency in radians * Sample Period in seconds) / 2 + (Corner Frequency in radians * Sample Period in seconds)
+        ///     x(n) = current ADC value read.
+        ///  Regarding the lag coefficient
+        ///
+        ///    LagCoefficient is derived from taking the following first order low pass filter S transform:
+        ///       1/(RCTimeConstant * s) and using the Tustin approximation for z which is
+        ///       s = (2/SamplingPeriod) * ((z-1)/(z+1))
         ///
         /// @pre    ADC Filter instantiated
         /// @post   ADC Filter applied when the filter is enabled.
         /// 
-        /// @param  fAtoDValueRead             Raw ADC data read by the ADC driver
+        /// @param  fADCValueRead              Raw ADC data read by the ADC driver
         /// @param  ulCornerFreqToFilterHZ     Corner Frequency for the filter in herz.
         /// @param  rfFilterOutput             Output from filter difference equation
         ///
-        /// @return  true when the filter was applied, false when filter isn't ready to start or can't be reconfigured
+        /// @return  true when the filter was applied, 
+        ///          false when the difference equation can't be applied.  Occurs when filter yields an invalid value,
+        ///          the filter can produce an invalid value when the result of the difference equation results in a 
+        ///          non floating point number or infinity. A return of false is also returned when the filter isn't 
+        ///          ready to start.  The filter isn't ready to start when the filter has not been configured with a 
+        ///          corner frequency in herz that is in the acceptable range.  The acceptable range of corner frequencies 
+        ///          is determined at object instantiation time.  Also the filter isn't ready to start when it has not 
+        ///          been configured with a sample period in microseconds that is in the acceptable range.  The accepatble 
+        ///          range of sample periods is determined at object instantiation time.  False is also returned when the 
+        ///          filter can't be reconfigured. Calls to ApplyFilter() with a corner frequency that is different than 
+        ///          the current corner frequency used will result in an attempt to configure the filter with the saved 
+        ///          sample period in microseconds and the the input corner frequency in herz.  If the call to configure 
+        ///          fails, reconfigure fails. 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        bool ApplyFilter(float        fAtoDValueRead, 
+        bool ApplyFilter(float        fADCValueRead, 
                          uint32_t     ulCornerFreqToFilterHZ, 
                          float &      rfFilterOutput);
 
@@ -152,14 +176,14 @@ namespace LowPassFilters
         /// @pre    object created.
         /// @post   Difference equation calculated.
         ///
-        /// @param  fAtoDValueRead           Raw ADC data scaled to a binary point
+        /// @param  fADCValueRead            Raw ADC data scaled to a binary point
         /// @param  fLagCoefficient          Coefficient of the lag term.
         /// @param  rfFilteredValue          Value of raw ADC data filtered
         ///
         /// @return  true when calculation occurred without error, 
-		///          false when applying filter yields an invalid value or is not ready to start
+        ///          false when applying filter yields an invalid value or is not ready to start
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        virtual bool CalcDiffEquation(float        fAtoDValueRead,
+        virtual bool CalcDiffEquation(float        fADCValueRead,
                                       float        fLagCoefficient,
                                       float &      rfFilteredOutput);
 

@@ -44,17 +44,16 @@ namespace LowPassFilters
         /// @param  ulCornerFreqHZ       Initial corner frequency in herz
         /// @param  ulSamplingPeriodUS   Sampling period for the filter in microseconds
         /// @param  LagCoefficient       InitialLagCoefficient
-        /// @param  AtoDResolutionBits   Bit resolution of ADC channels
+        /// @param  ulADCResolutionBits  Bit resolution of ADC channels
         /// 
         /// @return  None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         OUVFilter(uint32_t uiCornerFreqHZ,
-                  uint32_t ulSamplingPeriodUS,
-                  uint32_t LagCoeffecient,
-                  uint32_t AtoDResolutionBits)
-            : LowPassFilterFixedPt(uiCornerFreqHZ, ulSamplingPeriodUS, LagCoeffecient, AtoDResolutionBits)
-        {
-        }
+            uint32_t ulSamplingPeriodUS,
+            uint32_t LagCoeffecient,
+            uint32_t ulADCResolutionBits)
+            : LowPassFilterFixedPt(uiCornerFreqHZ, ulSamplingPeriodUS, LagCoeffecient, ulADCResolutionBits)
+        { SetFilteringConfigured(); }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: OUVFilter::~OUVFilter

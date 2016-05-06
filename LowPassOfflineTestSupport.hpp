@@ -3,6 +3,7 @@
 #include "OUVFilter.hpp"
 #include "ADCFilter.hpp"
 #include "lowpassneosfilter.hpp"
+#include "LowPassFiltersFixedPt.hpp"
 
 namespace LowPassOfflineTesting
 {
@@ -78,6 +79,8 @@ namespace LowPassOfflineTesting
 
 	void RunNeosFilter(FILTER_TEST_RESULTS & filterResults);
 	
+	void RunFixedPtFilter(FILTER_TEST_RESULTS & filterResults);
+
 	void CompareFilterOutputs(FILTER_TEST_RESULTS & ftrCompareTo, FILTER_TEST_RESULTS & ftrTargetBeingTested, double tolerancePercentAllowed);
 };
 #endif

@@ -5,98 +5,98 @@
 namespace LowPassOfflineTesting
 {
     double ConvertScaledNumToReal(int32_t ScaledNum, unsigned int ScaleFactor)
-	{
-		unsigned int Mask = 1 << (ScaleFactor-1);
+    {
+        unsigned int Mask = 1 << (ScaleFactor-1);
 
-		Mask -= 1;
+        Mask -= 1;
 
-		unsigned int Mask0 = Mask ^ 0xffffffff;
+        unsigned int Mask0 = Mask ^ 0xffffffff;
 
-		unsigned int WholeNum = (ScaledNum & Mask0) >> (ScaleFactor-1);
+        unsigned int WholeNum = (ScaledNum & Mask0) >> (ScaleFactor-1);
 
-		double WholeNumPart = WholeNum;
+        double WholeNumPart = WholeNum;
 
-		unsigned int Frac = ScaledNum;
+        unsigned int Frac = ScaledNum;
 
-		Frac &= Mask;
+        Frac &= Mask;
 
-		double FracPart = Frac;
+        double FracPart = Frac;
 
-		double denominator = pow(2.0, (double)(ScaleFactor-1));
+        double denominator = pow(2.0, (double)(ScaleFactor-1));
 
-		FracPart *= (1.0 / denominator);
+        FracPart *= (1.0 / denominator);
 
-		double RealVal = WholeNumPart + FracPart;
+        double RealVal = WholeNumPart + FracPart;
 
-		return RealVal;
-	}
+        return RealVal;
+    }
 
-	bool GetScaledVal(double Value, int32_t & ScaledNum, uint32_t ScaleFactor)
-	{
-		if (Value == 0.0)
-		{
-			ScaledNum = 0;
+    bool GetScaledVal(double Value, int32_t & ScaledNum, uint32_t ScaleFactor)
+    {
+        if (Value == 0.0)
+        {
+            ScaledNum = 0;
 
-			return true;
-		}
-		double     accum       = Value;
+            return true;
+        }
+        double     accum       = Value;
 
-		int32_t   IntegerPart = Value;
+        int32_t   IntegerPart = Value;
 
-		double dWholeNumPart = IntegerPart;
+        double dWholeNumPart = IntegerPart;
 
-		accum -= dWholeNumPart;
+        accum -= dWholeNumPart;
 
-		uint32_t scaledval = 0;
+        uint32_t scaledval = 0;
 
-		int i = 0;
+        int i = 0;
 
-		double PowerOf2;
+        double PowerOf2;
 
-		for (i = 0; i < ScaleFactor - 1; i++)
-		{
-			PowerOf2 = 1.0;
+        for (i = 0; i < ScaleFactor - 1; i++)
+        {
+            PowerOf2 = 1.0;
 
-			PowerOf2 /= (2 << i);
+            PowerOf2 /= (2 << i);
 
-			double interVal = accum - PowerOf2;
+            double interVal = accum - PowerOf2;
 
-			scaledval <<= 1;
+            scaledval <<= 1;
 
-			if (interVal >= 0.0)
-			{
-				scaledval |= 1;
+            if (interVal >= 0.0)
+            {
+                scaledval |= 1;
 
-				accum = interVal;
-			}
+                accum = interVal;
+            }
 
-			//if (interVal == 0.0) break;
+            //if (interVal == 0.0) break;
 
-		}
-		
-		ScaledNum = (IntegerPart << ScaleFactor - 1) | scaledval;
+        }
+        
+        ScaledNum = (IntegerPart << ScaleFactor - 1) | scaledval;
 
-		return true;
+        return true;
 
-	}
+    }
 
 
-	void InitFilterData(FILTER_TEST_RESULTS & filterResults, double const * &dInputVals, double dInitialVal, uint32_t Cutoff, uint32_t Period)
-	{
-		for (uint32_t ui = 0; ui < (sizeof(filterResults.ftv) / sizeof(FILTER_TEST_VAL)); ui++)
-		{
-			filterResults.ftv[ui].dInput = dInputVals[ui];
+    void InitFilterData(FILTER_TEST_RESULTS & filterResults, double const * &dInputVals, double dInitialVal, uint32_t Cutoff, uint32_t Period)
+    {
+        for (uint32_t ui = 0; ui < (sizeof(filterResults.ftv) / sizeof(FILTER_TEST_VAL)); ui++)
+        {
+            filterResults.ftv[ui].dInput = dInputVals[ui];
 
-			filterResults.ftv[ui].dOutput = -1.0;
-		}
+            filterResults.ftv[ui].dOutput = -1.0;
+        }
 
-		filterResults.uiCutoff = Cutoff;
+        filterResults.uiCutoff = Cutoff;
 
-		filterResults.uiPeriod = Period;
+        filterResults.uiPeriod = Period;
 
         filterResults.dInitialVal = dInitialVal;
 
-	} 
+    } 
 
     void RunFilterForCheckingLowPass(FILTER_TEST_RESULTS & filterResults)
     {
@@ -125,91 +125,132 @@ namespace LowPassOfflineTesting
         
     }
 
-	void RunAdcFilter(FILTER_TEST_RESULTS & filterResults)
-	{
-		static const double PI = 3.1415927;
+    void RunAdcFilter(FILTER_TEST_RESULTS & filterResults)
+    {
+        static const double PI = 3.1415927;
 
-		double Cutoff = filterResults.uiCutoff;
+        double Cutoff = filterResults.uiCutoff;
 
-		double Period = filterResults.uiPeriod;
+        double Period = filterResults.uiPeriod;
 
-		double Radians = 2.0 * PI * Cutoff * Period * 0.000001;
+        double Radians = 2.0 * PI * Cutoff * Period * 0.000001;
 
-		double calcLagCoeff = Radians / (Radians + 2.0);
+        double calcLagCoeff = Radians / (Radians + 2.0);
 
-		int32_t ScaledLagCoeff = 0;
+        int32_t ScaledLagCoeff = 0;
 
-		GetScaledVal(calcLagCoeff, ScaledLagCoeff);
+        GetScaledVal(calcLagCoeff, ScaledLagCoeff);
 
-		ADCFilter ADCTest(filterResults.uiCutoff,
-			filterResults.uiPeriod,
-			ScaledLagCoeff,
-			16);
+        ADCFilter ADCTest(filterResults.uiCutoff,
+            filterResults.uiPeriod,
+            ScaledLagCoeff,
+            16);
 
-		ADCTest.EnableFiltering();
+        ADCTest.EnableFiltering();
 
-		int32_t CurrentAtoDReading = 0;
+        int32_t CurrentAtoDReading = 0;
 
-		GetScaledVal(filterResults.dInitialVal, CurrentAtoDReading);
+        GetScaledVal(filterResults.dInitialVal, CurrentAtoDReading);
 
-		int32_t iOutput;
+        int32_t iOutput;
 
-		ADCTest.ConfigureFilter(100, 50);
+        ADCTest.ConfigureFilter(100, 50);
 
-		uint32_t uiNumberOfInputs = sizeof(filterResults.ftv) / sizeof(FILTER_TEST_VAL);
+        uint32_t uiNumberOfInputs = sizeof(filterResults.ftv) / sizeof(FILTER_TEST_VAL);
 
-		for (uint32_t ui = 0; ui < uiNumberOfInputs; ui++)
-		{
-			GetScaledVal(filterResults.ftv[ui].dInput, CurrentAtoDReading);
+        for (uint32_t ui = 0; ui < uiNumberOfInputs; ui++)
+        {
+            GetScaledVal(filterResults.ftv[ui].dInput, CurrentAtoDReading);
 
-			ADCTest.ApplyFilter((CurrentAtoDReading >> 15), filterResults.uiCutoff, iOutput);
+            ADCTest.ApplyFilter((CurrentAtoDReading >> 15), filterResults.uiCutoff, iOutput);
 
-			filterResults.ftv[ui].dOutput = ConvertScaledNumToReal(iOutput);
-		}
+            filterResults.ftv[ui].dOutput = ConvertScaledNumToReal(iOutput);
+        }
 
-	}
+    }
 
-	void RunNeosFilter(FILTER_TEST_RESULTS & filterResults)
-	{
-		static const double PI = 3.1415927;
+    void RunNeosFilter(FILTER_TEST_RESULTS & filterResults)
+    {
+        static const double PI = 3.1415927;
 
-		double Cutoff = filterResults.uiCutoff;
+        double Cutoff = filterResults.uiCutoff;
 
-		double Period = filterResults.uiPeriod;
+        double Period = filterResults.uiPeriod;
 
-		double Radians = 2.0 * PI * Cutoff * Period * 0.000001;
+        double Radians = 2.0 * PI * Cutoff * Period * 0.000001;
 
-		double calcLagCoeff = Radians / (Radians + 2.0);
+        double calcLagCoeff = Radians / (Radians + 2.0);
 
-		int32_t ScaledLagCoeff = 0;
+        int32_t ScaledLagCoeff = 0;
 
-		GetScaledVal(calcLagCoeff, ScaledLagCoeff);
+        GetScaledVal(calcLagCoeff, ScaledLagCoeff);
 
-		LowPassNeosFilter NeosTest(filterResults.uiCutoff,
-			                       filterResults.uiPeriod,
-			                       calcLagCoeff);
+        LowPassNeosFilter NeosTest(filterResults.uiCutoff,
+                                   filterResults.uiPeriod,
+                                   calcLagCoeff);
 
-		NeosTest.EnableFiltering();
+        NeosTest.EnableFiltering();
 
-		float CurrentAtoDReading = 0.0f;
+        float CurrentAtoDReading = 0.0f;
 
-		float fOutput;
+        float fOutput;
 
-		NeosTest.ConfigureFilter(100, 50);
+        NeosTest.ConfigureFilter(100, 50);
 
-		uint32_t uiNumberOfInputs = sizeof(filterResults.ftv) / sizeof(FILTER_TEST_VAL);
+        uint32_t uiNumberOfInputs = sizeof(filterResults.ftv) / sizeof(FILTER_TEST_VAL);
 
-		for (uint32_t ui = 0; ui < uiNumberOfInputs; ui++)
-		{
-			CurrentAtoDReading = filterResults.ftv[ui].dInput;
+        for (uint32_t ui = 0; ui < uiNumberOfInputs; ui++)
+        {
+            CurrentAtoDReading = filterResults.ftv[ui].dInput;
 
-			NeosTest.ApplyFilter(CurrentAtoDReading, filterResults.uiCutoff, fOutput);
+            NeosTest.ApplyFilter(CurrentAtoDReading, filterResults.uiCutoff, fOutput);
 
-			filterResults.ftv[ui].dOutput = fOutput;
-		}
+            filterResults.ftv[ui].dOutput = fOutput;
+        }
 
-	}
-	void RunOUVFilter(FILTER_TEST_RESULTS & filterResults)
+    }
+    void RunFixedPtFilter(FILTER_TEST_RESULTS & filterResults)
+    {
+        static const double PI = 3.1415927;
+
+        double Cutoff = filterResults.uiCutoff;
+
+        double Period = filterResults.uiPeriod;
+
+        double Radians = 2.0 * PI * Cutoff * Period * 0.000001;
+
+        double calcLagCoeff = Radians / (Radians + 2.0);
+
+        int32_t ScaledLagCoeff = 0;
+
+        GetScaledVal(calcLagCoeff, ScaledLagCoeff);
+
+        LowPassFilterFixedPt FixedPtTest(filterResults.uiCutoff,
+                                         filterResults.uiPeriod,
+                                         calcLagCoeff,
+                                         16);
+
+        FixedPtTest.EnableFiltering();
+
+        int32_t CurrentAtoDReading = 0;
+
+        int32_t sOutput;
+
+        FixedPtTest.ConfigureFilter(100, 50);
+
+        uint32_t uiNumberOfInputs = sizeof(filterResults.ftv) / sizeof(FILTER_TEST_VAL);
+
+        for (uint32_t ui = 0; ui < uiNumberOfInputs; ui++)
+        {
+            CurrentAtoDReading = filterResults.ftv[ui].dInput;
+
+            FixedPtTest.ApplyFilter(CurrentAtoDReading, filterResults.uiCutoff, sOutput);
+
+            filterResults.ftv[ui].dOutput = ConvertScaledNumToReal(sOutput);
+        }
+
+    }
+    void RunOUVFilter(FILTER_TEST_RESULTS & filterResults)
     {
         static const double PI = 3.1415927;
 
@@ -250,37 +291,37 @@ namespace LowPassOfflineTesting
 
     }
 
-	void CompareFilterOutputs(FILTER_TEST_RESULTS & ftrCompareTo, FILTER_TEST_RESULTS & ftrTargetBeingTested, double tolerancePercentAllowed)
-	{
-		uint32_t uiNumberOfInputs = sizeof(ftrCompareTo.ftv) / sizeof(FILTER_TEST_VAL);
+    void CompareFilterOutputs(FILTER_TEST_RESULTS & ftrCompareTo, FILTER_TEST_RESULTS & ftrTargetBeingTested, double tolerancePercentAllowed)
+    {
+        uint32_t uiNumberOfInputs = sizeof(ftrCompareTo.ftv) / sizeof(FILTER_TEST_VAL);
 
-		for (uint32_t ui = 0; ui < uiNumberOfInputs; ui++)
-		{
-			double diffComputedKnown = ftrCompareTo.ftv[ui].dOutput;
+        for (uint32_t ui = 0; ui < uiNumberOfInputs; ui++)
+        {
+            double diffComputedKnown = ftrCompareTo.ftv[ui].dOutput;
 
-			diffComputedKnown -= ftrTargetBeingTested.ftv[ui].dOutput;
+            diffComputedKnown -= ftrTargetBeingTested.ftv[ui].dOutput;
 
-			if (diffComputedKnown < 0.0)
-			{
-				diffComputedKnown = -diffComputedKnown;
-			}
+            if (diffComputedKnown < 0.0)
+            {
+                diffComputedKnown = -diffComputedKnown;
+            }
 
-			diffComputedKnown /= ftrCompareTo.ftv[ui].dOutput;
+            diffComputedKnown /= ftrCompareTo.ftv[ui].dOutput;
 
-			diffComputedKnown *= 100.0;
+            diffComputedKnown *= 100.0;
 
-			ftrTargetBeingTested.ftv[ui].dPercentError = diffComputedKnown;
+            ftrTargetBeingTested.ftv[ui].dPercentError = diffComputedKnown;
 
-			if (diffComputedKnown <= tolerancePercentAllowed)
-			{
-				ftrTargetBeingTested.ftv[ui].bInTolerance = true;
-			}
-			else
-			{
-				ftrTargetBeingTested.ftv[ui].bInTolerance = false;
+            if (diffComputedKnown <= tolerancePercentAllowed)
+            {
+                ftrTargetBeingTested.ftv[ui].bInTolerance = true;
+            }
+            else
+            {
+                ftrTargetBeingTested.ftv[ui].bInTolerance = false;
 
-			}
-		}
+            }
+        }
 
-	}
+    }
 };

@@ -34,11 +34,11 @@ namespace LowPassFilters
     /// Apply the low pass filter difference equation to unfiltered ADC input data
     ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool LowPassNeosFilter::ApplyFilter(float        fAtoDValueRead,
+    bool LowPassNeosFilter::ApplyFilter(float        fADCValueRead,
                                         uint32_t     ulCornerFreqToFilterHz,
                                         float &      rfFilterOutput)
     {
-        rfFilterOutput = fAtoDValueRead;
+        rfFilterOutput = fADCValueRead;
 
         bool bSuccess = true;
 
@@ -49,15 +49,24 @@ namespace LowPassFilters
         {
             bSuccess = false;
         }
+        //
+        // Regarding HasFilterRestarted()
+        // Filter restarting state is true when the filter has been configured and the first sample has not been applied or
+        // when the ApplyFilter method yields an invalid filter result.  When the filter is restarting, the first A to D value
+        // that is passed back to the caller from the ApplyFilter method is the output of the filter.  Therefore no 
+        // calculations are necessary and thus the filter has been applied successfully.
+        // An immediate return to the caller is taken since there is no calculation to do. 
+        // The value passed to HasFilterRestarted is what the filter data is initialized with.  
+        //
         else if (HasFilterRestarted(rfFilterOutput))
         {
-            m_fPrevFilteredValue = fAtoDValueRead;
+            m_fPrevFilteredValue = fADCValueRead;
 
-			bSuccess = true;
+            bSuccess = true;
         }
         else
         {
-            bSuccess = CalcDiffEquation(fAtoDValueRead, GetLagCoefficient(), rfFilterOutput);
+            bSuccess = CalcDiffEquation(fADCValueRead, GetLagCoefficient(), rfFilterOutput);
         }
 
         return bSuccess;
@@ -68,18 +77,18 @@ namespace LowPassFilters
     /// Calculate filtered output when applying the low pass filter
     ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool LowPassNeosFilter::CalcDiffEquation(float        fAtoDValueRead,
+    bool LowPassNeosFilter::CalcDiffEquation(float        fADCValueRead,
                                              float        fLagCoefficient,
                                              float &      rfFilteredOutput )
     {
         // Solve the lag filter equation besides adding to the previous filtered value and store it.
-        float fDiff = (fAtoDValueRead - m_fPrevFilteredValue) * GetLagCoefficient();
+        float fDiff = (fADCValueRead - m_fPrevFilteredValue) * GetLagCoefficient();
 
         // Solve the lag filter equation described above.
         float fFilteredValue = m_fPrevFilteredValue + m_fRemainder + fDiff;
 
         // Check to see if the filter yielded a valid floating point number.  A
-		// invalid floating point number is infinity or one when nan() returns true
+        // invalid floating point number is infinity or one when nan() returns true
 
         if (!IsFilterOutputValid(m_fPrevFilteredValue, fDiff, fFilteredValue))
         {
@@ -87,20 +96,20 @@ namespace LowPassFilters
 
             return false;
         }
-		if (    (fAtoDValueRead == 0.0f)
-			 && (fpclassify(fFilteredValue) == FP_SUBNORMAL)
-			 && (fFilteredValue != 0) 
-	       )
-		{   
-			// filter output is extremely near 0, headed to 0, but not 0.
-			// round to 0   
-			fFilteredValue = 0.0f;
-		}
+        if (    (fADCValueRead == 0.0f)
+             && (fpclassify(fFilteredValue) == FP_SUBNORMAL)
+             && (fFilteredValue != 0) 
+           )
+        {   
+            // filter output is extremely near 0, headed to 0, but not 0.
+            // round to 0   
+            fFilteredValue = 0.0f;
+        }
         
         //Check to make sure the diff was useful if not store it in the remainder until it becomes useful
         if (
                  (fFilteredValue == m_fPrevFilteredValue)
-              && (fAtoDValueRead != fFilteredValue)
+              && (fADCValueRead != fFilteredValue)
            )
         {
             m_fRemainder += fDiff;

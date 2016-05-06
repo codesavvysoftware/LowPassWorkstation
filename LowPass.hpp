@@ -3,6 +3,17 @@
 ///
 /// This class is the base class for low pass filtering
 ///
+/// Classes derived from LowPass template base class are instantiated with a TNumericFormat 
+/// 
+/// There pure virtual methods that all derived classes must implement:
+///        virtual bool ApplyFilter(TNumericFormat adcValueRead, uint32_t ulCornerFreqHZ, TNumericFormat & rFilterOutput);
+///        virtual bool ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodHZ);
+///        virtual bool CalcDiffEquation(TNumericFormat   ADCValue,
+///                                      TNumericFormat   LagCoefficient,
+///                                      TNumericFormat & FilteredValue);
+///        virtual void InitFilterDataForRestart(TNumericFormat InitialFilterOutput);
+///        virtual bool IsFilterOutputValid(TNumericFormat Term1,  TNumericFormat Term2, TNumericFormat Result);
+///
 /// @if REVISION_HISTORY_INCLUDED
 /// @par Edit History
 /// - thaley 04-May-2016 Original implementation
@@ -70,7 +81,6 @@ namespace LowPassFilters
               m_bFilteringEnabled(false),
               m_bValidConfigurationActive(false),
               m_bFirstSample(true),
-              m_bFilterConfigurationValid(false),
               m_ulCornerFreqUpperBndHZ(ulCornerFreqUpperBoundHZ),
               m_ulCornerFreqLowerBndHZ(ulCornerFreqLowerBoundHZ),
               m_ulSamplingPeriodUpperBndUS(ulSamplingPeriodUpperBoundUS),
@@ -200,13 +210,13 @@ namespace LowPassFilters
         /// @pre    object created.
         /// @post   Difference equation calculated.
         ///
-        /// @param  AtoDValue           Raw ADC data scaled to a binary point
+        /// @param  ADCValue            Raw ADC data scaled to a binary point
         /// @param  LagCoefficient      Coefficient of the lag term.
         /// @param  FilteredValue       Value of raw ADC data filtered
         ///
         /// @return  true when calculation occurred without error, false when an error occurs in the calculation
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        virtual bool CalcDiffEquation(TNumericFormat   AtoDValue,
+        virtual bool CalcDiffEquation(TNumericFormat   ADCValue,
                                       TNumericFormat   LagCoefficient,
                                       TNumericFormat & FilteredValue) = 0; 
 
@@ -241,8 +251,8 @@ namespace LowPassFilters
         /// @param  Result          Result of binary arithmetic operation of filter being checked
         ///
         /// @return  true when the result is valid, 
-		///          false when it is determined the filter output calculated is invald which is dependent on TNumericFormat
-		///
+        ///          false when it is determined the filter output calculated is invald which is dependent on TNumericFormat
+        ///
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         virtual bool IsFilterOutputValid(TNumericFormat Term1, TNumericFormat Term2, TNumericFormat Result) = 0;
 
@@ -292,7 +302,7 @@ namespace LowPassFilters
         /// @param  ulCornerFreqForFilterHZ     Corner frequency to reconfigure filter with in herz
         ///
         /// @return  true when filter reconfigured successfully, 
-		///          false when a reconfiguration is indicated but the Configure filter fails
+        ///          false when a reconfiguration is indicated but the Configure filter fails
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         bool ReconfigureWithNewCornerFrequency(uint32_t ulCornerFreqToFilterHZ)
         {
@@ -360,11 +370,40 @@ namespace LowPassFilters
         inline bool IsFilterConfigured() 
         { return m_bFilterConfigurationValid; }
 
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// FUNCTION NAME: LowPass::SetFilteringConfigured()
+        ///
+        /// Set filtering configured for applying the filter status
+        ///
+        /// @par Full Description
+        /// Set filtering configured status for determining filtering has valid configuration of sample period and corner
+        /// frequency.
+        ///
+        /// @pre    none.
+        /// @post   none.
+        /// 
+        /// @return true when filtering is enabled, false when disabled
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         inline void SetFilteringConfigured()
-        {	m_bFilterConfigurationValid = true;	}
+        { m_bValidConfigurationActive = true;	}
             ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// FUNCTION NAME: LowPass::ResetFilteringConfigured()
+        ///
+        /// Set filtering to not configured for applying the filter status
+        ///
+        /// @par Full Description
+        /// Reset filtering configured status for determining filtering has valid configuration of sample period and corner
+        /// frequency.
+        ///
+        /// @pre    none.
+        /// @post   none.
+        /// 
+        /// @return true when filtering is enabled, false when disabled
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         inline void ResetFilteringConfigured()
-        { m_bFilterConfigurationValid = false; }
+        { m_bValidConfigurationActive = false; }
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPass::GetCornerFreqHZ
         ///
@@ -520,9 +559,6 @@ namespace LowPassFilters
 
         // true when the first sample for a restarted has been read
         bool           m_bFirstSample;
-
-        // true when the filter is configured with a valid sample period and corner frequency
-        bool           m_bFilterConfigurationValid;
 
         // Max value for corner freq that filter can be configured with in herz
         uint32_t       m_ulCornerFreqUpperBndHZ;

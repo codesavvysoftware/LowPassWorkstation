@@ -7,7 +7,7 @@
 /// 
 ///        virtual bool ApplyFilter(int32_t adcValueRead, uint32_t ulCornerFreqHZ, int32_t & rFilterOutput);
 ///        virtual bool ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodHZ);
-///        virtual bool CalcDiffEquation(int32_t   AtoDValue,
+///        virtual bool CalcDiffEquation(int32_t   ADCValue,
 ///                                      int32_t   LagCoefficient,
 ///                                      int32_t & FilteredValue);
 ///        virtual void InitFilterDataForRestart(int32_t InitialFilterOutput);
@@ -59,7 +59,7 @@ namespace LowPassFilters
         /// @param  ulCornerFreqHZ         Initial corner frequency in herz
         /// @param  ulSamplingPeriodUS     Sampling period for the filter in microseconds
         /// @param  ulLagCoefficient       InitialLagCoefficient
-        /// @param  ulAtoDResolutionBits   Bit resolution of ADC channels
+        /// @param  ulADCResolutionBits    Bit resolution of ADC channels
         /// @param  ulNumberOfPoles        Number of poles the filter implements
         ///
         /// @return  None
@@ -67,10 +67,10 @@ namespace LowPassFilters
         LowPassFilterFixedPt(uint32_t ulCornerFreqHZ,
                              uint32_t ulSamplingPeriodUS,
                              uint32_t ulLagCoeffecient,
-                             uint32_t ulAtoDResolutionBits,
+                             uint32_t ulADCResolutionBits,
                              uint32_t ulNumberOfPoles = DEFAULT_NUMBER_OF_POLES)
-            : m_ulNumberOfFrcntlBits(NUMBER_OF_BITS_IN_SIGNED_LONG_VALS - ulAtoDResolutionBits - 1),
-              m_ulConfigFilterValForMovingFracBitsToFixedPtNumber(NUMBER_OF_BITS_IN_SIGNED_LONG_VALS + ulAtoDResolutionBits + 1),
+            : m_ulNumberOfFrcntlBits(NUMBER_OF_BITS_IN_SIGNED_LONG_VALS - ulADCResolutionBits - 1),
+              m_ulConfigFilterValForMovingFracBitsToFixedPtNumber(NUMBER_OF_BITS_IN_SIGNED_LONG_VALS + ulADCResolutionBits + 1),
               m_ulNumberOfPoles(ulNumberOfPoles),
               LowPass<int32_t>(ulCornerFreqHZ, ulSamplingPeriodUS, ulLagCoeffecient)
         {
@@ -99,41 +99,41 @@ namespace LowPassFilters
         /// Apply the low pass filter difference equation to unfiltered ADC input data
         ///
         /// @par Full Description
-        /// Virtual method for the applying the low pass filter. Called synchrously at a periodic rate to compute a
-		///  filtered output.  The output is calculated utilizing the following difference equation:
-		///  y(n) = y(n-1) + Lag Coefficient * ( x(n) - y(n-1) )
-		///  Where:
-		///     y(n)   = the output of the filter
-		///     y(n-1) = previous filter output
+        /// Virtual method for the applying the low pass filter. Called synchronously at a periodic rate to compute a
+        /// filtered output.  The output is calculated utilizing the following difference equation:
+        /// y(n) = y(n-1) + Lag Coefficient * ( x(n) - y(n-1) )
+        /// Where:
+        ///     y(n)   = the output of the filter
+        ///     y(n-1) = previous filter output
         ///     Lag Coefficient = (Corner Frequency in radians * Sample Period in seconds) / 2 + (Corner Frequency in radians * Sample Period in seconds)
-		///     x(n) = current ADC value read.
-		///  Regarding the lag coefficient
-		///
-		///    LagCoefficient is derived from taking the following first order low pass filter S transform:
+        ///     x(n) = current ADC value read.
+        ///  Regarding the lag coefficient
+        ///
+        ///    LagCoefficient is derived from taking the following first order low pass filter S transform:
         ///       1/(RCTimeConstant * s) and using the Tustin approximation for z which is
-		///       s = (2/SamplingPeriod) * ((z-1)/(z+1))
-		///
+        ///       s = (2/SamplingPeriod) * ((z-1)/(z+1))
+        ///
         /// @pre    object created.
         /// @post   filter applied to input A to D value when filter is enabled.
         ///
-        /// @param  slAdcValueRead     Raw ADC data read by the ADC driver
+        /// @param  slADCValueRead     Raw ADC data read by the ADC driver
         /// @param  ulCornerFreqHZ     Corner Frequency for the filter in herz
         /// @param  rslFilterOutput    Output from filter difference equation
         ///
         /// @return  true when the filter was applied, 
-		///          false when the difference equation can't be applied.  Occurs when filter yields an invalid value,
-		///          the filter can produce an invalid value when addition of terms in the difference equation results
-		///          in an overflow. A return of false is also returned when the filter isnt' ready to start.  The filter
-		///          isn't ready to start when the filter has not been configured with a corner frequency in herz that is in
-		///          the acceptable range.  The acceptable range of corner frequencies is determined at object instantiation
-		///          time.  Also the filter isn't ready to start when it has not been configured with a sample period in 
-		///          microseconds that is in the acceptable range.  The accepatble range of sample periods is determined at
-		///          object instantiation time.  False is also returned when the filter can't be reconfigured. Calles to 
-		///          ApplyFilter() with a corner frequency that is different than the current corner frequency used will
-		///          result in an attempt to configure the filter with the saved sample period in microseconds and the 
-		///          the input corner frequency in herz.  If the call to configure fails, reconfigure fails. 
+        ///          false when the difference equation can't be applied.  Occurs when filter yields an invalid value,
+        ///          the filter can produce an invalid value when addition of terms in the difference equation results
+        ///          in an overflow. A return of false is also returned when the filter isn't ready to start.  The filter
+        ///          isn't ready to start when the filter has not been configured with a corner frequency in herz that is in
+        ///          the acceptable range.  The acceptable range of corner frequencies is determined at object instantiation
+        ///          time.  Also the filter isn't ready to start when it has not been configured with a sample period in 
+        ///          microseconds that is in the acceptable range.  The accepatble range of sample periods is determined at
+        ///          object instantiation time.  False is also returned when the filter can't be reconfigured. Calls to 
+        ///          ApplyFilter() with a corner frequency that is different than the current corner frequency used will
+        ///          result in an attempt to configure the filter with the saved sample period in microseconds and the 
+        ///          the input corner frequency in herz.  If the call to configure fails, reconfigure fails. 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        virtual bool ApplyFilter(int32_t slAtoDValueRead, uint32_t ulCornerFreqToFilterHZ, int32_t & rslFilterOutput);
+        virtual bool ApplyFilter(int32_t slADCValueRead, uint32_t ulCornerFreqToFilterHZ, int32_t & rslFilterOutput);
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPassFilterFixedPt::ConfigureFilter
@@ -215,6 +215,23 @@ namespace LowPassFilters
 
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// FUNCTION NAME: LowPassFilterFixedPt::GetNumberOfFractionalBits
+        ///
+        /// Get the number of fractional bits for scaled fixed point integers 
+        ///
+        /// @par Full Description
+        /// Get the number of fractional bits for scaled fixed point integers which is derived from the ADC resolution
+        ///
+        /// @pre    object created.
+        /// @post   none.
+        ///
+        /// @param none
+        ///
+        /// @return  Number fractional bits
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        inline uint32_t GetNumberOfFractionalBits() { return (m_ulNumberOfFrcntlBits); }
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPassFilterFixedPt::ScaledMultiply
         ///
         /// Multiply two fixed point ints with a fractional part at a binary point.
@@ -233,22 +250,6 @@ namespace LowPassFilters
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         int32_t ScaledMultiply(int32_t slMultiplicand, int32_t slMultiplier, uint32_t ulNumberOfFractionalBits);
 
- 		////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		/// FUNCTION NAME: LowPassFilterFixedPt::GetNumberOfFractionalBits
-		///
-		/// Get the number of fractional bits for scaled fixed point integers 
-		///
-		/// @par Full Description
-		/// Get the number of fractional bits for scaled fixed point integers which is derived from the ADC resolution
-		///
-		/// @pre    object created.
-		/// @post   none.
-		///
-		/// @param none
-		///
-		/// @return  Number fractional bits
-		////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-		inline uint32_t GetNumberOfFractionalBits() { return (m_ulNumberOfFrcntlBits); }
  
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPassFilterFixedPt::CalcDiffEquation
@@ -265,15 +266,16 @@ namespace LowPassFilters
         /// @pre    object created.
         /// @post   Difference equation calculated.
         ///
-        /// @param  slScaledAtoD           Raw ADC data scaled to a binary point
+        /// @param  slScaledADCValue       Raw ADC data scaled to a binary point
         /// @param  slLagCoefficient       Coefficient of the lag term.
         /// @param  rslFilteredValue       Value of raw ADC data filtered
         ///
         /// @return  true when calculation occurred without error, false when the difference equation yields an invalid value
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        virtual bool CalcDiffEquation(int32_t   slScaledAtoD,
+        virtual bool CalcDiffEquation(int32_t   slScaledADCValue,
                                       int32_t   slLagCoefficient,
                                       int32_t & rslFilteredValue);
+
         // Maximum number of poles that filter can process
         static const uint32_t  MAX_NUMBER_OF_POLES = 4;
         
@@ -312,7 +314,7 @@ namespace LowPassFilters
 
         // Used for shifting the lag coefficient calculated as in ConfigFilter to the correct bit position.
         uint32_t m_ulConfigFilterValForMovingFracBitsToFixedPtNumber;
-		// inhibit default constructor, copy constructor, and assignment
+        // inhibit default constructor, copy constructor, and assignment
         LowPassFilterFixedPt();
 
         LowPassFilterFixedPt(LowPassFilterFixedPt &);
