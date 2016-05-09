@@ -5,11 +5,12 @@
 ///
 /// LowPass template class is instantiated with type int32_t.  The pure virtual methods needed to implemented with the following signatures
 /// 
-///        virtual bool ApplyFilter(int32_t adcValueRead, uint32_t ulCornerFreqHZ, int32_t & rFilterOutput);
-///        virtual bool ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodHZ);
-///        virtual bool CalcDiffEquation(int32_t   ADCValue,
-///                                      int32_t   LagCoefficient,
-///                                      int32_t & FilteredValue);
+///        virtual void ApplyFilter(int32_t adcValueRead, uint32_t ulCornerFreqHZ, int32_t & rFilterOutput, bool & rbFilterAppliedSuccessfully);
+///        virtual void ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodHZ, bool rbFilterConfigured);
+///        virtual voidl CalcDiffEquation(int32_t   ADCValue,
+///                                      int32_t    LagCoefficient,
+///                                      int32_t &  rulFilteredValue,
+///                                      bool &     rbCalculateSuccess);
 ///        virtual void InitFilterDataForRestart(int32_t InitialFilterOutput);
 ///        virtual bool IsFilterOutputValid(int32_t Term1,  int32_t Term2, int32_t Result);
 ///
@@ -17,10 +18,10 @@
 ///
 /// @if REVISION_HISTORY_INCLUDED
 /// @par Edit History
-/// - thaley 03-May-2016 Original implementation
+/// - thaley 09-May-2016 Original implementation
 /// @endif
 ///
-/// @ingroup NeoS Low Pass Filtering
+/// @ingroup NeoS Low Pass Filters
 ///
 /// @par Copyright (c) 2016 Rockwell Automation Technolgies, Inc.  All rights reserved.
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -116,24 +117,25 @@ namespace LowPassFilters
         /// @pre    object created.
         /// @post   filter applied to input A to D value when filter is enabled.
         ///
-        /// @param  slADCValueRead     Raw ADC data read by the ADC driver
-        /// @param  ulCornerFreqHZ     Corner Frequency for the filter in herz
-        /// @param  rslFilterOutput    Output from filter difference equation
+        /// @param  slADCValueRead                Raw ADC data read by the ADC driver
+        /// @param  ulCornerFreqHZ                Corner Frequency for the filter in herz
+        /// @param  rslFilterOutput               Output from filter difference equation
+        /// @param  rbFilterAppliedSuccessfully   true when the filter was applied, 
+        ///                                       false when the difference equation can't be applied.  Occurs when filter yields an invalid value,
+        ///                                       the filter can produce an invalid value when addition of terms in the difference equation results
+        ///                                       in an overflow. A return of false is also returned when the filter isn't ready to start.  The filter
+        ///                                       isn't ready to start when the filter has not been configured with a corner frequency in herz that is in
+        ///                                       the acceptable range.  The acceptable range of corner frequencies is determined at object instantiation
+        ///                                       time.  Also the filter isn't ready to start when it has not been configured with a sample period in 
+        ///                                       microseconds that is in the acceptable range.  The accepatble range of sample periods is determined at
+        ///                                       object instantiation time.  False is also returned when the filter can't be reconfigured. Calls to 
+        ///                                       ApplyFilter() with a corner frequency that is different than the current corner frequency used will
+        ///                                       result in an attempt to configure the filter with the saved sample period in microseconds and the 
+        ///                                       the input corner frequency in herz.  If the call to configure fails, reconfigure fails. 
         ///
         /// @return  true when the filter was applied, 
-        ///          false when the difference equation can't be applied.  Occurs when filter yields an invalid value,
-        ///          the filter can produce an invalid value when addition of terms in the difference equation results
-        ///          in an overflow. A return of false is also returned when the filter isn't ready to start.  The filter
-        ///          isn't ready to start when the filter has not been configured with a corner frequency in herz that is in
-        ///          the acceptable range.  The acceptable range of corner frequencies is determined at object instantiation
-        ///          time.  Also the filter isn't ready to start when it has not been configured with a sample period in 
-        ///          microseconds that is in the acceptable range.  The accepatble range of sample periods is determined at
-        ///          object instantiation time.  False is also returned when the filter can't be reconfigured. Calls to 
-        ///          ApplyFilter() with a corner frequency that is different than the current corner frequency used will
-        ///          result in an attempt to configure the filter with the saved sample period in microseconds and the 
-        ///          the input corner frequency in herz.  If the call to configure fails, reconfigure fails. 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        virtual bool ApplyFilter(int32_t slADCValueRead, uint32_t ulCornerFreqToFilterHZ, int32_t & rslFilterOutput);
+        virtual void ApplyFilter(int32_t slADCValueRead, uint32_t ulCornerFreqToFilterHZ, int32_t & rslFilterOutput, bool & bFilterAppliedSuccessfully);
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPassFilterFixedPt::ConfigureFilter
@@ -148,10 +150,12 @@ namespace LowPassFilters
         ///
         /// @param  uiCornerFreqHZ         Corner Frequency for the filter herz
         /// @param  uiSamplingPeriodUS     Sampling period for the filter in microseconds
-        ///
-        /// @return  true when the filter was configured, false when corner frequency amd sampling period are out of bounds
+        /// @param  rbFilterConfigured     true when the filter was configured, false when corner frequency amd sampling 
+        ///                                period are out of bounds.
+        /// 
+        /// @return return none
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        virtual bool ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplePeriodUS);
+        virtual void ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplePeriodUS, bool & rbFilterConfigured);
 
     protected:
         //**************************************************************************************************************
@@ -269,12 +273,14 @@ namespace LowPassFilters
         /// @param  slScaledADCValue       Raw ADC data scaled to a binary point
         /// @param  slLagCoefficient       Coefficient of the lag term.
         /// @param  rslFilteredValue       Value of raw ADC data filtered
+        /// @param  rbCaluculateSuccess    true when calculation occurred without error, false when the difference equation yields an invalid value
         ///
-        /// @return  true when calculation occurred without error, false when the difference equation yields an invalid value
+        /// @return none
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        virtual bool CalcDiffEquation(int32_t   slScaledADCValue,
+        virtual void CalcDiffEquation(int32_t   slScaledADCValue,
                                       int32_t   slLagCoefficient,
-                                      int32_t & rslFilteredValue);
+                                      int32_t & rslFilteredValue,
+                                      bool &    rbCalculateSuccess);
 
         // Maximum number of poles that filter can process
         static const uint32_t  MAX_NUMBER_OF_POLES = 4;

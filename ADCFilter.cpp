@@ -10,7 +10,7 @@
 /// - thaley1   03-May-2016 Original Implementation
 /// @endif
 ///
-/// @ingroup ???
+/// @ingroup Low Pass Filters
 ///
 /// @par Copyright (c) 2016 Rockwell Automation Technologies, Inc.  All rights reserved.
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -34,7 +34,10 @@ namespace LowPassFilters
     /// Apply the low pass filter difference equation to unfiltered ADC input data
     ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool ADCFilter::ApplyFilter(int32_t slADCValueRead, uint32_t ulCornerFreqToFilterHZ,  int32_t & rslFilterOutput)
+    void ADCFilter::ApplyFilter(int32_t  slADCValueRead, 
+                                uint32_t  ulCornerFreqToFilterHZ,  
+                                int32_t & rslFilterOutput,
+                                bool &    rbFilterAppliedSuccessfully)
     {
         int32_t slScaledADCValue = slADCValueRead << 15;
 
@@ -45,8 +48,12 @@ namespace LowPassFilters
               && !ReconfigureWithNewCornerFrequency(ulCornerFreqToFilterHZ)
            )
         {
-            return false;
+            rbFilterAppliedSuccessfully = false;
+
+            return;
         }
+
+        rbFilterAppliedSuccessfully = true;
 
         //
         // Filter restarting state is true when the filter has been configured and the first sample has not been applied or
@@ -58,12 +65,10 @@ namespace LowPassFilters
         //
         if (HasFilterRestarted(rslFilterOutput))
         {
-           return true;
+            return;
         }
 
         int32_t slCurrentFilterOutput = slScaledADCValue;
-
-        bool bFilterApplied = true;
 
         for (uint32_t ul = 0;
                 (ul < MAX_NUMBER_OF_POLES)
@@ -200,7 +205,7 @@ namespace LowPassFilters
             {
                 slCurrentFilterOutput = slScaledADCValue;
 
-                bFilterApplied = false;
+                rbFilterAppliedSuccessfully = false;
 
                 break;
             }
@@ -217,7 +222,7 @@ namespace LowPassFilters
             {
                 slCurrentFilterOutput = slScaledADCValue;
 
-                bFilterApplied = false;
+                rbFilterAppliedSuccessfully = false;
 
                 break;
             }
@@ -227,8 +232,6 @@ namespace LowPassFilters
         }
 
         rslFilterOutput = slCurrentFilterOutput;
-
-        return bFilterApplied;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -237,9 +240,9 @@ namespace LowPassFilters
     /// Configure filter difference equation coefficients
     ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool ADCFilter::ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodUS)
+    void ADCFilter::ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodUS, bool & rbFilterConfigured)
     {
-        bool    bFilterConfigured = true;
+        rbFilterConfigured = true;
 
         //
         // Only certain corner frequencies are allowed for configuration
@@ -284,18 +287,16 @@ namespace LowPassFilters
 
          default:
          
-             bFilterConfigured = false;
+             rbFilterConfigured = false;
 
             break;
         }
 
-        if (bFilterConfigured)
+        if (rbFilterConfigured)
         {
             SetCornerFreqHZ(ulCornerFreqHZ);
 
             SetFilteringConfigured();
         }
-
-        return bFilterConfigured;
     }
 };

@@ -5,21 +5,22 @@
 ///
 /// LowPass template class is instantiated with type int32_t.  The pure virtual methods needed to implemented with the following signatures
 /// 
-///        virtual bool ApplyFilter(int32_t adcValueRead, uint32_t ulCornerFreqHZ, int32_t & rFilterOutput);
-///        virtual bool ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodHZ);
-///        virtual bool CalcDiffEquation(int32_t   ADCValue,
+///        virtual void ApplyFilter(int32_t adcValueRead, uint32_t ulCornerFreqHZ, int32_t & rFilterOutput, bool & rbFilterAppliedSuccessfully);
+///        virtual void ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodHZ, bool & rbFilterConfigured);
+///        virtual void CalcDiffEquation(int32_t   ADCValue,
 ///                                      int32_t   LagCoefficient,
-///                                      int32_t & FilteredValue);
+///                                      int32_t & rulFilteredValue,
+///                                      bool &    rbCalucateSuccess);
 ///        virtual void InitFilterDataForRestart(int32_t InitialFilterOutput);
 ///        virtual bool IsFilterOutputValid(int32_t Term1,  int32_t Term2, int32_t Result);
 ///
 ///
 /// @if REVISION_HISTORY_INCLUDED
 /// @par Edit History
-/// - thaley1   03-May-2016 Original Implementation
+/// - thaley1   09-May-2016 Original Implementation
 /// @endif
 ///
-/// @ingroup ???
+/// @ingroup Low Pass Filter
 ///
 /// @par Copyright (c) 2016 Rockwell Automation Technologies, Inc.  All rights reserved.
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -45,9 +46,9 @@ namespace LowPassFilters
     /// Apply the low pass filter difference equation to unfiltered ADC input data
     ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool LowPassFilterFixedPt::ApplyFilter(int32_t slADCValueRead, uint32_t ulCornerFreqToFilter, int32_t & rslFilterOutput)
+    void LowPassFilterFixedPt::ApplyFilter(int32_t slADCValueRead, uint32_t ulCornerFreqToFilter, int32_t & rslFilterOutput, bool & rbFilterAppliedSuccessfully)
     {
-        bool bSuccess = true;
+        rbFilterAppliedSuccessfully = true;
         
         int32_t slScaledADCValue = slADCValueRead << m_ulNumberOfFrcntlBits;
         
@@ -57,7 +58,7 @@ namespace LowPassFilters
              || !ReconfigureWithNewCornerFrequency(ulCornerFreqToFilter)
            )
         {
-            bSuccess = false;
+            rbFilterAppliedSuccessfully = false;
         }
         //
         // Regarding HasFilterRestarted()
@@ -68,16 +69,21 @@ namespace LowPassFilters
         // An immediate return to the caller is taken since there is no calculation to do. 
         // The value passed to HasFilterRestarted is what the filter data is initialized with.  
         //
-        else if (    !HasFilterRestarted(rslFilterOutput)
-                  && !CalcDiffEquation(slScaledADCValue, GetLagCoefficient(), rslFilterOutput)
-                )
+        else if (HasFilterRestarted(rslFilterOutput))
+        {
+            return;
+        }
+        
+        bool bCalculateSuccess = false;
+        
+        CalcDiffEquation(slScaledADCValue, GetLagCoefficient(), rslFilterOutput, bCalculateSuccess);
+                
+        if (!bCalculateSuccess)
         {
             RestartFiltering();
 
-            bSuccess = false;
+            rbFilterAppliedSuccessfully = false;
         }
-        
-        return bSuccess;
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -86,86 +92,86 @@ namespace LowPassFilters
     /// Configure filter difference equation coefficients
     ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool LowPassFilterFixedPt::ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplePeriodUS)
+    void LowPassFilterFixedPt::ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplePeriodUS, bool & rbFilterConfigured)
     {
-        if (    !IsCornerFreqWithBounds(ulCornerFreqHZ)
-             || !IsSamplingPeriodWithBounds(ulSamplePeriodUS)
-           )
+        rbFilterConfigured = false;
+        
+        if (IsCornerFreqWithBounds(ulCornerFreqHZ)
+            && IsSamplingPeriodWithBounds(ulSamplePeriodUS)
+            )
         {
-            return false;
+            SetCornerFreqHZ(ulCornerFreqHZ);
+
+            SetSamplingPeriodUS(ulSamplePeriodUS);
+
+            //
+            //The lag coefficient using fixed point number:
+            // 
+            //   One of the implicit assumptions that was used in a previous implementation of a filter that was reviewed was that the fraction is linearly proportional 
+            //   to the product of the corner frequency and sample period over a small range of values.The lag coefficient is in the form
+            //    X / ((2 + X))
+            //    
+            //   Realizing that if the above was linearly proportional to the product of the corner frequency and sample period then when using the first derivative 
+            //   of a function in this form is even more so in being linearly proportional.  
+            //   The idea is to approximate the first derivative by a straight f(x) = mx + b 
+            //   and integrate the function.
+            //   The first derivative of the above functions is in the form :
+            //        2 / ((2 + X)(2 + X))
+            //   Easy to calculate b, when X = 0, b = 0.5;
+            //   
+            //   Without going through the entire calculation m is very close to - 0.5 over a range of corner frequency, sampling period 100 Hz and 500 us respectively.
+            //  
+            //   So the approximation of the first derivative of a straight line is :
+            //   = 0.5 – 0.5x
+            //
+            //   Therefore the lag coefficient is approximated by integrating the straight line function :
+            //   = 0.5x –(0.25)*(x**2) 
+            //
+            //   When substituting 2 * PI * Corner Rrequency in Herz * Sample Period in seconds for  x, 
+            //   = .5 * 2 * PI * Corner Rrequency in Herz * Sample Period in seconds - .25 * (2 * PI * Corner Rrequency in Herz * Sample Period in seconds)**2
+            //   = ( PI * Corner Rrequency in Herz * Sample Period in seconds) - (PI * Corner Rrequency in Radians * Sample Herz in seconds)**2
+            //   = ( PI * Corner Rrequency in Herz * Sample Period in seconds) * (1 - ( PI * Corner Rrequency in Herz * Sample Period in seconds))
+            //
+            //   Sample Period in seconds = Sample Period in microseconds * .000001
+            //   Therefore 
+            //   PI * Corner Rrequency in Herz * Sample Period in seconds = PI * Corner Rrequency in Herz * Sample Period in microseconds * .000001
+            //                                                            = PI * .000001 * Corner Rrequency in Herz * Sample Period in microseconds
+            //   LAG_CONSTANT = (PI * 0.000001)
+            //   LagCoefficient = LAG_CONSTANT * ulCornerFreqHZ * ulSamplePeriodUS * ( 1 - (LAG_CONSTANT * ulCornerFreqHZ * ulSamplePeriodUS))
+            //  
+            //   Since this calculation is performed asynchronously and infrequently 64 bit values are used.  Basically this makes the code simpler
+            //   LAG_CONSTANT = 13493;
+            //   which as 64 bit integer with 32 bits of fractional precision is 13493 * 2**(-32) = 0.0000031415838 close enough to (PI * 0.000001) 
+            //   
+            uint64_t ullAccum = LAG_CONSTANT * ulCornerFreqHZ * ulSamplePeriodUS;
+
+
+            // ( 1 - (LAG_CONSTANT * ulCornerFreqHZ * ulSamplePeriodUS))
+            uint64_t ullSecondTermInApprox = (ONE_PT_ZERO_SCALED_BINARY_PT - ullAccum);
+
+            ullAccum *= ullSecondTermInApprox;
+
+            ullAccum += ROUND_OFF_FRAC_64;
+
+            // For th 64 bit result of the multiply we want to shift the least significant bit for the 32 bit fixed point LagCoefficient to the 
+            // correct place in the 32 bit fixed point number since the product of two numbers scaled to 2**(-32) is scaled to 2**(-64)
+            // We know result in llAccum is scaled to 2**(-64) since we multiplied two numbers scaled to 2**(-32)
+            // Therefore shifting 32 bits to the right scales the number to 2**(-32) 
+            // After shifting to the right by 32 the most significant bit of the 32 bit result represents 2**(-1) which is bit 31.
+            // the 2**(-1) bit needs to be shifted to the correct place in the 32 bit fixed point number.  In order to shift it to the correct place
+            // it must be shifted to the immediate right of the least significant bit of the integer part.  
+            // Since the number of bits in the integer part is the ADC resolution + 1, it needs to be shifted to the right by ADC resolution + 1.
+            // 
+            // m_ulConfigFilteredValForMovingFracBitsToFixedPtNumber is set when the object is instantiated
+            //
+            ullAccum >>= m_ulConfigFilterValForMovingFracBitsToFixedPtNumber;
+
+            SetLagCoefficient(static_cast<uint32_t>(ullAccum));
+
+            SetFilteringConfigured();
+
+            rbFilterConfigured = true;
         }
-            
-        SetCornerFreqHZ(ulCornerFreqHZ);
-
-        SetSamplingPeriodUS(ulSamplePeriodUS);
-
-         //
-        //The lag coefficient using fixed point number:
-        // 
-        //   One of the implicit assumptions that was used in a previous implementation of a filter that was reviewed was that the fraction is linearly proportional 
-        //   to the product of the corner frequency and sample period over a small range of values.The lag coefficient is in the form
-        //    X / ((2 + X))
-        //    
-        //   Realizing that if the above was linearly proportional to the product of the corner frequency and sample period then when using the first derivative 
-        //   of a function in this form is even more so in being linearly proportional.  
-        //   The idea is to approximate the first derivative by a straight f(x) = mx + b 
-        //   and integrate the function.
-        //   The first derivative of the above functions is in the form :
-        //        2 / ((2 + X)(2 + X))
-        //   Easy to calculate b, when X = 0, b = 0.5;
-        //   
-        //   Without going through the entire calculation m is very close to - 0.5 over a range of corner frequency, sampling period 100 Hz and 500 us respectively.
-        //  
-        //   So the approximation of the first derivative of a straight line is :
-        //   = 0.5 – 0.5x
-        //
-        //   Therefore the lag coefficient is approximated by integrating the straight line function :
-        //   = 0.5x –(0.25)*(x**2) 
-        //
-        //   When substituting 2 * PI * Corner Rrequency in Herz * Sample Period in seconds for  x, 
-        //   = .5 * 2 * PI * Corner Rrequency in Herz * Sample Period in seconds - .25 * (2 * PI * Corner Rrequency in Herz * Sample Period in seconds)**2
-        //   = ( PI * Corner Rrequency in Herz * Sample Period in seconds) - (PI * Corner Rrequency in Radians * Sample Herz in seconds)**2
-        //   = ( PI * Corner Rrequency in Herz * Sample Period in seconds) * (1 - ( PI * Corner Rrequency in Herz * Sample Period in seconds))
-        //
-        //   Sample Period in seconds = Sample Period in microseconds * .000001
-        //   Therefore 
-        //   PI * Corner Rrequency in Herz * Sample Period in seconds = PI * Corner Rrequency in Herz * Sample Period in microseconds * .000001
-        //                                                            = PI * .000001 * Corner Rrequency in Herz * Sample Period in microseconds
-        //   LAG_CONSTANT = (PI * 0.000001)
-        //   LagCoefficient = LAG_CONSTANT * ulCornerFreqHZ * ulSamplePeriodUS * ( 1 - (LAG_CONSTANT * ulCornerFreqHZ * ulSamplePeriodUS))
-        //  
-        //   Since this calculation is performed asynchronously and infrequently 64 bit values are used.  Basically this makes the code simpler
-        //   LAG_CONSTANT = 13493;
-        //   which as 64 bit integer with 32 bits of fractional precision is 13493 * 2**(-32) = 0.0000031415838 close enough to (PI * 0.000001) 
-        //   
-        uint64_t ullAccum = LAG_CONSTANT * ulCornerFreqHZ * ulSamplePeriodUS;
-
-
-        // ( 1 - (LAG_CONSTANT * ulCornerFreqHZ * ulSamplePeriodUS))
-        uint64_t ullSecondTermInApprox = (ONE_PT_ZERO_SCALED_BINARY_PT - ullAccum);
-
-        ullAccum *= ullSecondTermInApprox;
-
-        ullAccum += ROUND_OFF_FRAC_64;
-
-        // For th 64 bit result of the multiply we want to shift the least significant bit for the 32 bit fixed point LagCoefficient to the 
-        // correct place in the 32 bit fixed point number since the product of two numbers scaled to 2**(-32) is scaled to 2**(-64)
-        // We know result in llAccum is scaled to 2**(-64) since we multiplied two numbers scaled to 2**(-32)
-        // Therefore shifting 32 bits to the right scales the number to 2**(-32) 
-        // After shifting to the right by 32 the most significant bit of the 32 bit result represents 2**(-1) which is bit 31.
-        // the 2**(-1) bit needs to be shifted to the correct place in the 32 bit fixed point number.  In order to shift it to the correct place
-        // it must be shifted to the immediate right of the least significant bit of the integer part.  
-        // Since the number of bits in the integer part is the ADC resolution + 1, it needs to be shifted to the right by ADC resolution + 1.
-        // 
-        // m_ulConfigFilteredValForMovingFracBitsToFixedPtNumber is set when the object is instantiated
-        //
-        ullAccum >>= m_ulConfigFilterValForMovingFracBitsToFixedPtNumber;
-
-        SetLagCoefficient(static_cast<uint32_t>(ullAccum));
-
-        SetFilteringConfigured();
-
-        return true;
     }
 
     //**************************************************************************************************************
@@ -209,9 +215,10 @@ namespace LowPassFilters
     /// Calculate filtered output when applying the low pass filter
     ///
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    bool LowPassFilterFixedPt::CalcDiffEquation(int32_t   slScaledADCValue,
+    void LowPassFilterFixedPt::CalcDiffEquation(int32_t   slScaledADCValue,
                                                 int32_t   slLagCoefficient,
-                                                int32_t & rslFilteredValue)
+                                                int32_t & rslFilteredValue,
+                                                bool &    rbCalculateSuccess)
     {
         uint32_t ul = 0;
 
@@ -257,7 +264,9 @@ namespace LowPassFilters
 
             if (bSubtractionOverflowed)
             {
-                return false;
+                rbCalculateSuccess = false;
+
+                return;
             }
 
             slCurrentFilterResult = ScaledMultiply(slSecondTermOfDiffEq, slLagCoefficient, m_ulNumberOfFrcntlBits);
@@ -270,7 +279,9 @@ namespace LowPassFilters
 
             if (bAdditionOverflowed)
             {
-                return false;
+                rbCalculateSuccess = false;
+
+                return;
             }
 
             m_slPole[ul] = slCurrentFilterResult;
@@ -279,7 +290,7 @@ namespace LowPassFilters
 
         rslFilteredValue = slCurrentFilterResult;
 
-        return true;
+        rbCalculateSuccess =  true;
     }
 
     int32_t LowPassFilterFixedPt::ScaledMultiply(int32_t slMultiplicand, int32_t slMultiplier, uint32_t ulNumberOfFractionalBits)

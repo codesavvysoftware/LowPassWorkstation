@@ -1,24 +1,25 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/// @file LowPassNeosFilter.hpp
+/// @file LowPassFloat.hpp
 ///
 /// The base class for the low pass filters that use floating point arithmetic and derived from the template base class.
 ///
 /// LowPass template class is instantiated with type float.  The pure virtual methods needed to implemented with the following signatures
 /// 
-///        virtual bool ApplyFilter(float adcValueRead, uint32_t ulCornerFreqHZ, float & rFilterOutput);
-///        virtual bool ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodHZ);
-///        virtual bool CalcDiffEquation(float   ADCValue,
+///        virtual void ApplyFilter(float adcValueRead, uint32_t ulCornerFreqHZ, float & rFilterOutput, bool & rbFilterAppliedSuccessfully);
+///        virtual void ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodHZ, bool & rbFilterConfigured);
+///        virtual void CalcDiffEquation(float   ADCValue,
 ///                                      float   LagCoefficient,
-///                                      float & FilteredValue);
+///                                      float & rfFilteredValue,
+///                                      bool &  rbCalculateSuccess);
 ///        virtual void InitFilterDataForRestart(float InitialFilterOutput);
 ///        virtual bool IsFilterOutputValid(float Term1,  float Term2, float Result);
 /// 
 /// @if REVISION_HISTORY_INCLUDED
 /// @par Edit History
-/// - thaley 03-May-2016 Original implementation
+/// - thaley 09-May-2016 Original implementation
 /// @endif
 ///
-/// @ingroup NeoS Low Pass Filtering
+/// @ingroup 3424
 ///
 /// @par Copyright (c) 2016 Rockwell Automation Technolgies, Inc.  All rights reserved.
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -41,7 +42,7 @@ namespace LowPassFilters
 
     static const float TWO_PT_ZERO                    = 2.0f;
 
-    class LowPassNeosFilter : public LowPass<float>
+    class LowPassFloat : public LowPass<float>
     {
     public:
         //**************************************************************************************************************
@@ -49,7 +50,7 @@ namespace LowPassFilters
         //**************************************************************************************************************
     
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// FUNCTION NAME: LowPassNeosFilter::LowPassNeosFilter
+        /// FUNCTION NAME: LowPassFloat::LowPassFloat
         ///
         /// Constructor
         ///
@@ -66,7 +67,7 @@ namespace LowPassFilters
         /// @return  None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
  
-        LowPassNeosFilter( uint32_t ulCornerFreqHZ,
+        LowPassFloat( uint32_t ulCornerFreqHZ,
                            uint32_t ulSamplingPeriodUS,
                            float    fLagCoefficient)
             : m_fPrevFilteredValue(0.0),
@@ -76,7 +77,7 @@ namespace LowPassFilters
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// FUNCTION NAME: LowPassNeosFilter::~LowPassNeosFilter
+        /// FUNCTION NAME: LowPassFloat::~LowPassFloat
         ///
         /// Destructor
         ///
@@ -88,12 +89,12 @@ namespace LowPassFilters
         ///
         /// @return  None
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        virtual ~LowPassNeosFilter()
+        virtual ~LowPassFloat()
         {
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// FUNCTION NAME: LowPassNeosFilter::ApplyFilter
+        /// FUNCTION NAME: LowPassFloat::ApplyFilter
         ///
         /// Apply the low pass filter difference equation to unfiltered ADC input data
         ///
@@ -115,30 +116,32 @@ namespace LowPassFilters
         /// @pre    ADC Filter instantiated
         /// @post   ADC Filter applied when the filter is enabled.
         /// 
-        /// @param  fADCValueRead              Raw ADC data read by the ADC driver
-        /// @param  ulCornerFreqToFilterHZ     Corner Frequency for the filter in herz.
-        /// @param  rfFilterOutput             Output from filter difference equation
-        ///
-        /// @return  true when the filter was applied, 
-        ///          false when the difference equation can't be applied.  Occurs when filter yields an invalid value,
-        ///          the filter can produce an invalid value when the result of the difference equation results in a 
-        ///          non floating point number or infinity. A return of false is also returned when the filter isn't 
-        ///          ready to start.  The filter isn't ready to start when the filter has not been configured with a 
-        ///          corner frequency in herz that is in the acceptable range.  The acceptable range of corner frequencies 
-        ///          is determined at object instantiation time.  Also the filter isn't ready to start when it has not 
-        ///          been configured with a sample period in microseconds that is in the acceptable range.  The accepatble 
-        ///          range of sample periods is determined at object instantiation time.  False is also returned when the 
-        ///          filter can't be reconfigured. Calls to ApplyFilter() with a corner frequency that is different than 
-        ///          the current corner frequency used will result in an attempt to configure the filter with the saved 
-        ///          sample period in microseconds and the the input corner frequency in herz.  If the call to configure 
-        ///          fails, reconfigure fails. 
-        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        bool ApplyFilter(float        fADCValueRead, 
+        /// @param  fADCValueRead                 Raw ADC data read by the ADC driver
+        /// @param  ulCornerFreqToFilterHZ        Corner Frequency for the filter in herz.
+        /// @param  rfFilterOutput                Output from filter difference equation
+        /// @param  rbFilterAppliedSuccessfully   true when the filter was applied, 
+        ///                                       false when the difference equation can't be applied.  Occurs when filter yields an invalid value,
+        ///                                       the filter can produce an invalid value when the result of the difference equation results in a 
+        ///                                       non floating point number or infinity. A return of false is also returned when the filter isn't 
+        ///                                       ready to start.  The filter isn't ready to start when the filter has not been configured with a 
+        ///                                       corner frequency in herz that is in the acceptable range.  The acceptable range of corner frequencies 
+        ///                                       is determined at object instantiation time.  Also the filter isn't ready to start when it has not 
+        ///                                       been configured with a sample period in microseconds that is in the acceptable range.  The accepatble 
+        ///                                       range of sample periods is determined at object instantiation time.  False is also returned when the 
+        ///                                       filter can't be reconfigured. Calls to ApplyFilter() with a corner frequency that is different than 
+        ///                                       the current corner frequency used will result in an attempt to configure the filter with the saved 
+        ///                                       sample period in microseconds and the the input corner frequency in herz.  If the call to configure 
+        ///                                       fails, reconfigure fails. 
+		///
+		/// @return  none 
+		////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        void ApplyFilter(float        fADCValueRead, 
                          uint32_t     ulCornerFreqToFilterHZ, 
-                         float &      rfFilterOutput);
+                         float &      rfFilterOutput,
+			             bool &       rbFilterAppliedSuccessfully);
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// FUNCTION NAME: LowPassNeosFilter::ConfigureFilter
+        /// FUNCTION NAME: LowPassFloat::ConfigureFilter
         ///
         /// Configure filter difference equation coefficients
         ///
@@ -150,10 +153,12 @@ namespace LowPassFilters
         ///
         /// @param  ulCornerFreqHZ         Corner Frequency for the filter in Herz
         /// @param  ulSamplingPeriodUS     Sampling period for the filter in microseconds
+		/// @param  rbFilterConfigured     true when the filter was configured, false when corner frequency or 
+		///                                sampling period are not valid
         ///
-        /// @return  true when the filter was configured, false when corner frequency or sampling period are not valid
+        /// @return none 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        bool ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodUS); 
+        void ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodUS, bool & rbFilterConfigured); 
 
     protected:
 
@@ -179,16 +184,18 @@ namespace LowPassFilters
         /// @param  fADCValueRead            Raw ADC data scaled to a binary point
         /// @param  fLagCoefficient          Coefficient of the lag term.
         /// @param  rfFilteredValue          Value of raw ADC data filtered
-        ///
-        /// @return  true when calculation occurred without error, 
-        ///          false when applying filter yields an invalid value or is not ready to start
+		/// @param  rbCalculateSuccess       true when calculation occurred without error, 
+		///                                  false when applying filter yields an invalid value or is not ready to start
+		///
+        /// @return  none
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        virtual bool CalcDiffEquation(float        fADCValueRead,
+        virtual void CalcDiffEquation(float        fADCValueRead,
                                       float        fLagCoefficient,
-                                      float &      rfFilteredOutput);
+                                      float &      rfFilteredOutput,
+			                          bool &       rbCalculateSuccess);
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// FUNCTION NAME: LowPassNeosFilter::InitFilterDataForRestart
+        /// FUNCTION NAME: LowPassFloat::InitFilterDataForRestart
         ///
         /// Initialize filter data to put the filter in it's initial state
         ///
@@ -205,7 +212,7 @@ namespace LowPassFilters
 
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// FUNCTION NAME: LowPassNeosFilter::IsFilterResultValid
+        /// FUNCTION NAME: LowPassFloat::IsFilterResultValid
         ///
         /// Determine validity of low pass filter output
         ///
@@ -238,7 +245,7 @@ namespace LowPassFilters
         float m_fRemainder;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        /// FUNCTION NAME: LowPassNeosFilter::IsFloatValid
+        /// FUNCTION NAME: LowPassFloat::IsFloatValid
         ///
         /// Determine validity of input float
         ///
@@ -256,11 +263,11 @@ namespace LowPassFilters
         { return (!isnan(f) && !isinf(f)); }
 
         // inhibit default constructor, copy constructor, and assignment
-        LowPassNeosFilter();
+        LowPassFloat();
 
-        LowPassNeosFilter(LowPassNeosFilter &);
+        LowPassFloat(LowPassFloat &);
 
-        LowPassNeosFilter & operator=(LowPassNeosFilter const&); // assign op. hidden
+        LowPassFloat & operator=(LowPassFloat const&); // assign op. hidden
     };
 
 };

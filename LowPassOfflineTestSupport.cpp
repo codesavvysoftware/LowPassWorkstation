@@ -154,7 +154,9 @@ namespace LowPassOfflineTesting
 
         int32_t iOutput;
 
-        ADCTest.ConfigureFilter(100, 50);
+		bool bFilterConfigured = false;
+		
+		ADCTest.ConfigureFilter(100, 50, bFilterConfigured);
 
         uint32_t uiNumberOfInputs = sizeof(filterResults.ftv) / sizeof(FILTER_TEST_VAL);
 
@@ -162,7 +164,9 @@ namespace LowPassOfflineTesting
         {
             GetScaledVal(filterResults.ftv[ui].dInput, CurrentAtoDReading);
 
-            ADCTest.ApplyFilter((CurrentAtoDReading >> 15), filterResults.uiCutoff, iOutput);
+			bool bFilterApplied;
+
+            ADCTest.ApplyFilter((CurrentAtoDReading >> 15), filterResults.uiCutoff, iOutput, bFilterApplied);
 
             filterResults.ftv[ui].dOutput = ConvertScaledNumToReal(iOutput);
         }
@@ -185,7 +189,7 @@ namespace LowPassOfflineTesting
 
         GetScaledVal(calcLagCoeff, ScaledLagCoeff);
 
-        LowPassNeosFilter NeosTest(filterResults.uiCutoff,
+        LowPassFloat NeosTest(filterResults.uiCutoff,
                                    filterResults.uiPeriod,
                                    calcLagCoeff);
 
@@ -195,7 +199,9 @@ namespace LowPassOfflineTesting
 
         float fOutput;
 
-        NeosTest.ConfigureFilter(100, 50);
+		bool bFilterConfigured = false;
+
+        NeosTest.ConfigureFilter(100, 50, bFilterConfigured);
 
         uint32_t uiNumberOfInputs = sizeof(filterResults.ftv) / sizeof(FILTER_TEST_VAL);
 
@@ -203,7 +209,9 @@ namespace LowPassOfflineTesting
         {
             CurrentAtoDReading = filterResults.ftv[ui].dInput;
 
-            NeosTest.ApplyFilter(CurrentAtoDReading, filterResults.uiCutoff, fOutput);
+			bool bFilterApplied;
+
+            NeosTest.ApplyFilter(CurrentAtoDReading, filterResults.uiCutoff, fOutput, bFilterApplied);
 
             filterResults.ftv[ui].dOutput = fOutput;
         }
@@ -236,7 +244,9 @@ namespace LowPassOfflineTesting
 
         int32_t sOutput;
 
-        FixedPtTest.ConfigureFilter(100, 50);
+		bool    bFilterConfigured = false;
+
+        FixedPtTest.ConfigureFilter(100, 50, bFilterConfigured);
 
         uint32_t uiNumberOfInputs = sizeof(filterResults.ftv) / sizeof(FILTER_TEST_VAL);
 
@@ -244,7 +254,9 @@ namespace LowPassOfflineTesting
         {
             CurrentAtoDReading = filterResults.ftv[ui].dInput;
 
-            FixedPtTest.ApplyFilter(CurrentAtoDReading, filterResults.uiCutoff, sOutput);
+			bool bFilterApplied;
+
+            FixedPtTest.ApplyFilter(CurrentAtoDReading, filterResults.uiCutoff, sOutput, bFilterApplied);
 
             filterResults.ftv[ui].dOutput = ConvertScaledNumToReal(sOutput);
         }
@@ -284,7 +296,9 @@ namespace LowPassOfflineTesting
         {
             GetScaledVal(filterResults.ftv[ui].dInput, CurrentAtoDReading);
 
-            OUVTest.ApplyFilter((CurrentAtoDReading>>15), filterResults.uiCutoff, iOutput);
+			bool bFilterApplied;
+
+            OUVTest.ApplyFilter((CurrentAtoDReading>>15), filterResults.uiCutoff, iOutput, bFilterApplied);
 
             filterResults.ftv[ui].dOutput = ConvertScaledNumToReal(iOutput);
         }     

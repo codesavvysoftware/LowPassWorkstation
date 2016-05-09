@@ -9,7 +9,7 @@
 /// - thaley 20-Apr-2016 Original implementation
 /// @endif
 ///
-/// @ingroup ???
+/// @ingroup Low Pass Filters
 ///
 /// @par Copyright (c) 2016 Rockwell Automation Technolgies, Inc.  All rights reserved.
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -69,6 +69,12 @@ namespace LowPassFilters
         {
         }
 
+    private:
+
+        //**************************************************************************************************************
+        // Private methods and attributes
+        //************************************************************************************************************** 
+  
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: OUVFilter::ConfigureFilter
         ///
@@ -82,17 +88,8 @@ namespace LowPassFilters
         ///
         /// @return  true always. Used when sample period and corner frequency are compile time constants only.
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        bool ConfigureFilter(uint32_t uiCornerFreqHZ, unsigned uiSamplingPeriodUS)
-        {
-            return true;
-        }
+        void ConfigureFilter(uint32_t uiCornerFreqHZ, unsigned uiSamplingPeriodUS, bool & rbFilterConfigure) {};
 
-    private:
-
-        //**************************************************************************************************************
-        // Private methods and attributes
-        //************************************************************************************************************** 
-  
         // inhibit default constructor, copy constructor, and assignment
         OUVFilter();
 

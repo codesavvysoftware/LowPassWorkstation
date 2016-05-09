@@ -6,20 +6,21 @@
 /// Classes derived from LowPass template base class are instantiated with a TNumericFormat 
 /// 
 /// There pure virtual methods that all derived classes must implement:
-///        virtual bool ApplyFilter(TNumericFormat adcValueRead, uint32_t ulCornerFreqHZ, TNumericFormat & rFilterOutput);
-///        virtual bool ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodHZ);
-///        virtual bool CalcDiffEquation(TNumericFormat   ADCValue,
+///        virtual void ApplyFilter(TNumericFormat adcValueRead, uint32_t ulCornerFreqHZ, TNumericFormat & rFilterOutput, bool rbFilterAppliedSuccessfully);
+///        virtual void ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodHZ, bool & bFilterConfigured );
+///        virtual void CalcDiffEquation(TNumericFormat   ADCValue,
 ///                                      TNumericFormat   LagCoefficient,
-///                                      TNumericFormat & FilteredValue);
+///                                      TNumericFormat & FilteredValue,
+////                                     bool           & bCalculationSuccess);
 ///        virtual void InitFilterDataForRestart(TNumericFormat InitialFilterOutput);
 ///        virtual bool IsFilterOutputValid(TNumericFormat Term1,  TNumericFormat Term2, TNumericFormat Result);
 ///
 /// @if REVISION_HISTORY_INCLUDED
 /// @par Edit History
-/// - thaley 04-May-2016 Original implementation
+/// - thaley 09-May-2016 Original implementation
 /// @endif
 ///
-/// @ingroup ???
+/// @ingroup Low Pass Filters
 ///
 /// @par Copyright (c) 2016 Rockwell Automation Technolgies, Inc.  All rights reserved.
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -116,13 +117,14 @@ namespace LowPassFilters
         /// @pre    none.
         /// @post   None but all filters that inherit the base class must implement a method with this signature.
         /// 
-        /// @param  adcValueRead     Raw ADC data read by the ADC driver
-        /// @param  ulCornerFreqHZ   Corner Frequency for the filter in Herz.
-        /// @param  rFilterOutput    Output from filter difference equation
+        /// @param  adcValueRead                 Raw ADC data read by the ADC driver
+        /// @param  ulCornerFreqHZ               Corner Frequency for the filter in Herz.
+        /// @param  rFilterOutput                Output from filter difference equation
+        /// @param  rbFilterAppliedSuccessfully  true when the filter was applied, false when filter calculation yields an error or is not ready to start
         ///
-        /// @return  true when the filter was applied, false when filter calculation yields an error or is not ready to start
+        /// @return none
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        virtual bool ApplyFilter(TNumericFormat adcValueRead, uint32_t ulCornerFreqHZ, TNumericFormat & rFilterOutput) = 0;
+        virtual void ApplyFilter(TNumericFormat adcValueRead, uint32_t ulCornerFreqHZ, TNumericFormat & rFilterOutput, bool & rbFilterAppliedSuccessfully) = 0;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPass::ConfigureFilter
@@ -137,10 +139,12 @@ namespace LowPassFilters
         /// 
         /// @param  ulCornerFreqHZ         Corner Frequency for the filter in herz
         /// @param  ulSamplingPeriodUS     Sampling period for the filter in microseconds
+        /// @param  rbFilterConfigured     true when the filter was configured, false for invalid corner frequency 
+        ///                                or sampling period.
         ///
-        /// @return  true when the filter was configured, false for invalid corner frequency or sampling period.
+        /// @return none
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        virtual bool ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodHZ) = 0;
+        virtual void ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodHZ, bool & rbFilterConfigured) = 0;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPass::EnableFiltering()
@@ -210,15 +214,17 @@ namespace LowPassFilters
         /// @pre    object created.
         /// @post   Difference equation calculated.
         ///
-        /// @param  ADCValue            Raw ADC data scaled to a binary point
-        /// @param  LagCoefficient      Coefficient of the lag term.
-        /// @param  FilteredValue       Value of raw ADC data filtered
+        /// @param  ADCValue             Raw ADC data scaled to a binary point
+        /// @param  LagCoefficient       Coefficient of the lag term.
+        /// @param  FilteredValue        Value of raw ADC data filtered
+        /// @param  rbCalcuationSuccess  true when calculation occurred without error, false when an error occurs in the calculation
         ///
-        /// @return  true when calculation occurred without error, false when an error occurs in the calculation
+        /// @return  none
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        virtual bool CalcDiffEquation(TNumericFormat   ADCValue,
+        virtual void CalcDiffEquation(TNumericFormat   ADCValue,
                                       TNumericFormat   LagCoefficient,
-                                      TNumericFormat & FilteredValue) = 0; 
+                                      TNumericFormat & FilteredValue,
+                                      bool &           bCalculationSuccess) = 0; 
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPass::InitFilterDataForRestart
@@ -314,7 +320,7 @@ namespace LowPassFilters
             {
                 uint32_t ulSamplePeriodUS = GetSamplePeriodUS();
 
-                bConfigureSuccess = ConfigureFilter(ulCornerFreqToFilterHZ, ulSamplePeriodUS);
+                ConfigureFilter(ulCornerFreqToFilterHZ, ulSamplePeriodUS, bConfigureSuccess);
             }
 
             return bConfigureSuccess;

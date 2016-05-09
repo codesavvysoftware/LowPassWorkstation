@@ -2,7 +2,7 @@
 #define LOWPASS_OFFLINE_TESTING
 #include "OUVFilter.hpp"
 #include "ADCFilter.hpp"
-#include "lowpassneosfilter.hpp"
+#include "LowPassFloat.hpp"
 #include "LowPassFiltersFixedPt.hpp"
 
 namespace LowPassOfflineTesting
