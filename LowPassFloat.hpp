@@ -19,7 +19,7 @@
 /// - thaley 09-May-2016 Original implementation
 /// @endif
 ///
-/// @ingroup 3424
+/// @ingroup Low Pass Filters
 ///
 /// @par Copyright (c) 2016 Rockwell Automation Technolgies, Inc.  All rights reserved.
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
