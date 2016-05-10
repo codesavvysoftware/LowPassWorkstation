@@ -7,7 +7,7 @@
 ///
 /// @if REVISION_HISTORY_INCLUDED
 /// @par Edit History
-/// - thaley1   03-May-2016 Original Implementation
+/// - thaley1   09-May-2016 Original Implementation
 /// @endif
 ///
 /// @ingroup Low Pass Filters
