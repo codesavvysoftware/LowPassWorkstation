@@ -420,5 +420,23 @@ namespace LowPassFilters
 
         return bFilterOutputValid;
     }
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	/// FUNCTION NAME: LowPassFilterFixedPt::IsADCResolutionInRange
+	///
+	/// Determine of ADC resolution bits within allowable range.
+    ///
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	bool LowPassFilterFixedPt::IsADCResolutionInRange()
+	{
+		bool bADCResolutionInRange = false;
+
+		if ((m_ulADCResolutionBits >= MIN_ADC_RESOLUTION_BITS) && (m_ulADCResolutionBits <= MAX_ADC_RESOLUTION_BITS))
+		{
+			bADCResolutionInRange = true;
+		}
+
+		return bADCResolutionInRange;
+	}
+
 };
 

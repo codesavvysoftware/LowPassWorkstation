@@ -45,7 +45,7 @@ namespace LowPassFilters
             
         if (
                  !IsFilteringReadyToStart()
-              && !ReconfigureWithNewCornerFrequency(ulCornerFreqToFilterHZ)
+              || !ReconfigureWithNewCornerFrequency(ulCornerFreqToFilterHZ)
            )
         {
             rbFilterAppliedSuccessfully = false;
@@ -242,61 +242,71 @@ namespace LowPassFilters
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     void ADCFilter::ConfigureFilter(uint32_t ulCornerFreqHZ, uint32_t ulSamplingPeriodUS, bool & rbFilterConfigured)
     {
-        rbFilterConfigured = true;
-
-        //
-        // Only certain corner frequencies are allowed for configuration
-        //
-        switch (ulCornerFreqHZ)
+        if (!IsADCResolutionInRange())
         {
-        case FREQ_100_HZ:
-                
-            m_slFrequencyShiftFactor = SHIFT_FACTOR_FOR_100_HZ_CORNER_FREQ;
+            rbFilterConfigured = false;
 
-            break;
-
-        case FREQ_50_HZ:
-        
-            m_slFrequencyShiftFactor = SHIFT_FACTOR_FOR_100_HZ_CORNER_FREQ + 1;
-
-            break;
-
-        case FREQ_25_HZ:
-        
-            m_slFrequencyShiftFactor = SHIFT_FACTOR_FOR_100_HZ_CORNER_FREQ + 2;
-
-            break;
-
-        case FREQ_10_HZ:
-     
-            m_slFrequencyShiftFactor = SHIFT_FACTOR_FOR_100_HZ_CORNER_FREQ + 3;
-
-            break;
-
-        case FREQ_5_HZ:
-        
-            m_slFrequencyShiftFactor = SHIFT_FACTOR_FOR_100_HZ_CORNER_FREQ + 4;
-
-            break;
-
-        case FREQ_1_HZ:
-          
-            m_slFrequencyShiftFactor = SHIFT_FACTOR_FOR_100_HZ_CORNER_FREQ + 6;
-
-            break;
-
-         default:
-         
-             rbFilterConfigured = false;
-
-            break;
         }
-
-        if (rbFilterConfigured)
+        else
         {
-            SetCornerFreqHZ(ulCornerFreqHZ);
+            rbFilterConfigured = true;
 
-            SetFilteringConfigured();
+            //
+            // Only certain corner frequencies are allowed for configuration
+            //
+            switch (ulCornerFreqHZ)
+            {
+            case FREQ_100_HZ:
+
+                m_slFrequencyShiftFactor = SHIFT_FACTOR_FOR_100_HZ_CORNER_FREQ;
+
+                break;
+
+            case FREQ_50_HZ:
+
+                m_slFrequencyShiftFactor = SHIFT_FACTOR_FOR_100_HZ_CORNER_FREQ + 1;
+
+                break;
+
+            case FREQ_25_HZ:
+
+                m_slFrequencyShiftFactor = SHIFT_FACTOR_FOR_100_HZ_CORNER_FREQ + 2;
+
+                rbFilterConfigured = true;
+
+                break;
+
+            case FREQ_10_HZ:
+
+                m_slFrequencyShiftFactor = SHIFT_FACTOR_FOR_100_HZ_CORNER_FREQ + 3;
+
+                break;
+
+            case FREQ_5_HZ:
+
+                m_slFrequencyShiftFactor = SHIFT_FACTOR_FOR_100_HZ_CORNER_FREQ + 4;
+
+                break;
+
+            case FREQ_1_HZ:
+
+                m_slFrequencyShiftFactor = SHIFT_FACTOR_FOR_100_HZ_CORNER_FREQ + 6;
+
+                break;
+
+            default:
+
+                rbFilterConfigured = false;
+
+                break;
+            }
+
+            if (rbFilterConfigured)
+            {
+                SetCornerFreqHZ(ulCornerFreqHZ);
+
+                SetFilteringConfigured();
+            }
         }
     }
 };

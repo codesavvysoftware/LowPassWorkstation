@@ -72,6 +72,7 @@ namespace LowPassFilters
                              uint32_t ulNumberOfPoles = DEFAULT_NUMBER_OF_POLES)
             : m_ulNumberOfFrcntlBits(NUMBER_OF_BITS_IN_SIGNED_LONG_VALS - ulADCResolutionBits - 1),
               m_ulConfigFilterValForMovingFracBitsToFixedPtNumber(NUMBER_OF_BITS_IN_SIGNED_LONG_VALS + ulADCResolutionBits + 1),
+              m_ulADCResolutionBits(ulADCResolutionBits),
               m_ulNumberOfPoles(ulNumberOfPoles),
               LowPass<int32_t>(ulCornerFreqHZ, ulSamplingPeriodUS, ulLagCoeffecient)
         {
@@ -219,6 +220,23 @@ namespace LowPassFilters
 
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        /// FUNCTION NAME: LowPassFilterFixedPt::IsADCResolutionInRange
+        ///
+        /// Determine of ADC resolution bits within allowable range.
+        ///
+        /// @par Full Description
+        /// Method for determining if the ADC resolution specified is within allowable range 
+        ///
+        /// @pre    object created.
+        /// @post   none.
+        ///
+        /// @param none
+        ///
+        /// @return true when ADC resolution bit within allowable range, false when not
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        bool IsADCResolutionInRange();
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// FUNCTION NAME: LowPassFilterFixedPt::GetNumberOfFractionalBits
         ///
         /// Get the number of fractional bits for scaled fixed point integers 
@@ -314,12 +332,22 @@ namespace LowPassFilters
         // Number of bits in an int value
         const static uint32_t NUMBER_OF_BITS_IN_SIGNED_LONG_VALS = sizeof(int) * CHAR_BIT;
 
+        // Maximum number of bits of A/D resolution
+        const static uint32_t MAX_ADC_RESOLUTION_BITS = 26;
+
+        // Minimum number of bits of A/D resolution
+	const static uint32_t MIN_ADC_RESOLUTION_BITS = 8;
+
         // Number of fractionas bits in the scaled integers.  
         // Places to the right of the binary point.
         uint32_t m_ulNumberOfFrcntlBits;
 
         // Used for shifting the lag coefficient calculated as in ConfigFilter to the correct bit position.
         uint32_t m_ulConfigFilterValForMovingFracBitsToFixedPtNumber;
+
+        // Number of ADC Resolution Bits
+        uint32_t m_ulADCResolutionBits;
+
         // inhibit default constructor, copy constructor, and assignment
         LowPassFilterFixedPt();
 

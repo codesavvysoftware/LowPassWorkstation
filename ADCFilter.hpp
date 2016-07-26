@@ -53,10 +53,9 @@ namespace LowPassFilters
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         ADCFilter(uint32_t ulCornerFreqHZ,
                   uint32_t ulSamplingPeriodUS,
-                  uint32_t ulLagCoeffecient,
                   uint32_t ulADCResolutionBits)
             : m_slFrequencyShiftFactor(0),
-            LowPassFilterFixedPt(ulCornerFreqHZ, ulSamplingPeriodUS, ulLagCoeffecient, ulADCResolutionBits, 1)// FIELD_SIDE_NUMBER_OF_POLES)
+            LowPassFilterFixedPt(ulCornerFreqHZ, ulSamplingPeriodUS, 0U, ulADCResolutionBits, 1)// FIELD_SIDE_NUMBER_OF_POLES)
         {
         }
 
